@@ -9,24 +9,32 @@ Das Skript erfordert eine einzige Benutzereingabe (die PhotoTAN, die seit neuste
 
 ## Settings
 Hier gibt es drei Werte zu setzen:
-**user** = Deine Zugangsnummer
-**pass** = Deine PIN/Passwort
-**range** = Welche Zeitspanne soll heruntergeladen werden. Entspricht der Position in der Zeitspanne-auswahlbox in der Postbox (1 bis x). Ist kein Wert angegeben (range=), wird das Programm den Benutzer eine interaktive Auswahl anbieten.
-**outputdir** = Ausgabeverzeichnis, in das die heruntergeladenen Dateien gespeichert werden sollen.
+- **user** = Deine Zugangsnummer
+- **pass** = Deine PIN/Passwort
+- **range** = Welche Zeitspanne soll heruntergeladen werden. Entspricht der Position in der Zeitspanne-auswahlbox in der Postbox (1 bis x). Ist kein Wert angegeben (range=), wird das Programm den Benutzer eine interaktive Auswahl anbieten.
+- **outputdir** = Ausgabeverzeichnis, in das die heruntergeladenen Dateien gespeichert werden sollen.
 
 
 Siehe settings.ini.example als Beispieldatei.
 
 ### Übliche Range-Werte (Stand Sep 2019)
-1: Letzte 30 Tage-MONAT
-2: Letztes halbes Jahr-HALBES_JAHR
-3: Gesamter Zeitraum-GESAMTER_ZEITRAUM
-4: 2019-2019
-5: 2018-2018
-6: 2017-2017
-7: 2016-2016
+- 1: Letzte 30 Tage-MONAT
+- 2: Letztes halbes Jahr-HALBES_JAHR
+- 3: Gesamter Zeitraum-GESAMTER_ZEITRAUM
+- 4: 2019-2019
+- 5: 2018-2018
+- 6: 2017-2017
+- 7: 2016-2016
 
 ### Outputdir
 Es können relative Pfade angegeben werden. Diese werden ausgehend vom Skriptverzeichnis aufgelöst. Z.b. Dokumente als Unterverzeichnis.
-Wird ein absoluter Pfad angegeben (z.b. C:\\Benutzer\\Annonymus\\Dokumente\\Bank\\Comdirect\\PDFs ), so wird dieser auch korrekt verwendet.
+Wird ein absoluter Pfad angegeben (z.b. *C:\\Benutzer\\Annonymus\\Dokumente\\Bank\\Comdirect\\PDFs* ), so wird dieser auch korrekt verwendet.
+
 Wichtig: "\" als Pfad-Trenner muss immer doppelt angegeben werden wie in obigem Beispiel!
+
+
+## Verwendet:
+- Chromedriver (from Chromium Project)
+- Selenium (E2E testing suite, used to manipulate browser inputs & navigation)
+
+Check licenses.md for their licenses and ensure you adhere to them if you use this code somewhere.

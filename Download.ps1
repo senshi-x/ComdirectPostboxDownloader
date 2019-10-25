@@ -110,6 +110,7 @@ Write-Output $($pdfURLs.Count.ToString() + " files found on the server")
 # Now we actually download the PDFs using the websession from before
 $counter = 0
 foreach ($pdf in $pdfURLs) {
+    $pdf = $pdf.split("?")[0]
     $text = $pdf.split("/")[-1]
     if (($pdf.split(".")[-1] -eq "pdf") -and !(Test-Path $postBoxDir\$text -PathType Leaf )) {
         wget $pdf -WebSession $session -OutFile $postBoxDir\$text
@@ -118,7 +119,6 @@ foreach ($pdf in $pdfURLs) {
     }
 }
 Write-Output $($counter.ToString() + " new files downloaded")
-
 
 # Cleaning up after ourselves!
 # Pause # Adding a stop, after pressing enter within the console the Selenium session will end everything will be closed

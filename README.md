@@ -28,9 +28,9 @@ Siehe settings.ini.example als Beispieldatei.
 
 ### Outputdir
 Es können relative Pfade angegeben werden. Diese werden ausgehend vom Skriptverzeichnis aufgelöst. Z.b. Dokumente als Unterverzeichnis.
-Wird ein absoluter Pfad angegeben (z.b. *C:\\Benutzer\\Annonymus\\Dokumente\\Bank\\Comdirect\\PDFs* ), so wird dieser auch korrekt verwendet.
+Wird ein absoluter Pfad angegeben (z.b. `C:\\Benutzer\\Annonymus\\Dokumente\\Bank\\Comdirect\\PDFs` ), so wird dieser auch korrekt verwendet.
 
-Wichtig: "\" als Pfad-Trenner muss immer doppelt angegeben werden wie in obigem Beispiel!
+Wichtig: "`\`" als Pfad-Trenner muss immer doppelt angegeben werden wie in obigem Beispiel!
 
 
 ## Verwendet:

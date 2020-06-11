@@ -34,7 +34,7 @@ Wichtig: "`\`" als Pfad-Trenner muss immer doppelt angegeben werden wie in obige
 
 
 ## Verwendet:
-- Chromedriver (from Chromium Project)
+- Chromedriver (from Chromium Project) (find the latest versions [here](https://chromedriver.chromium.org/downloads) if you are encountering errors)
 - Selenium (E2E testing suite, used to manipulate browser inputs & navigation)
 
 Check licenses.md for their licenses and ensure you adhere to them if you use this code somewhere.

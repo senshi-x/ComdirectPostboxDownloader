@@ -1,4 +1,7 @@
+[DEFAULT]
 user=Zugangsnummer
 pass=PIN/Passwort
+clientId=ClientID, die via API Access erhaltbar ist (https://kunde.comdirect.de/itx/oauth/privatkunden)
+clientSecret=ClientSecret, welches ebenfalls in vorigem Link verfügbar ist
 range=
 output=Dokumente

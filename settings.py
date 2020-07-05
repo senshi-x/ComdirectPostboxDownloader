@@ -107,8 +107,6 @@ class Settings:
 
         return isAvailAndFilled
 
-    #        return not (settingName not in self.__config[section] or (settingName in self.__config[section] and self.__config.has_option(None, settingName) == True))
-
     def __getInputForString(self, printString):
         # print("----------------------------------------------------------------")
         inp = input(printString)

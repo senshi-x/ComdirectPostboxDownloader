@@ -51,9 +51,6 @@ class Main:
         print(printLeftString + (spaces * filler) + printRightString)
 
     def showMenu(self):
-
-        menuWidth = 74
-
         def __print_menu():
             self.__printFullWidth("--")
             self.__printFullWidth(" Comdirect Documents Downloader ")
@@ -149,7 +146,6 @@ class Main:
     def __loadDocuments(self):
         if not self.conn:
             raise NameError("conn not set!")
-            return
 
         if self.onlineDocumentsDict:
             return
@@ -359,9 +355,7 @@ class Main:
             if not bool(self.settings.getBoolValueForKey("dryRun")) and not isCountRun:
                 docContent = self.conn.downloadMessage(documentMeta)
                 moddate = time.mktime(
-                    datetime.datetime.strptime(
-                        documentMeta["dateCreation"], "%Y-%m-%d"
-                    ).timetuple()
+                    datetime.datetime.strptime(docCreateDate, "%Y-%m-%d").timetuple()
                 )
                 with open(filepath, "wb") as f:
                     f.write(docContent)

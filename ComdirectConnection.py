@@ -1,4 +1,3 @@
-
 import requests
 import random
 import string
@@ -18,8 +17,7 @@ class Connection:
         self.requestId = ""
         for _ in range(12):
             self.sessionId += random.choice(string.ascii_lowercase + string.digits)
-        self.requestId = datetime.now().strftime('%Y%m%d%H%M%S')
-        
+        self.requestId = datetime.now().strftime("%Y%m%d%H%M%S")
 
     def login(self):
         self.__getOAuth()
@@ -27,36 +25,36 @@ class Connection:
         self.__getTANChallenge()
         self.__getCDSecondary()
 
-    def __getHeaders(self, contentType = "application/json", requestId = ""):
-        
-        if not requestId:
-            self.requestId = datetime.now().strftime('%Y%m%d%H%M%S')
+    def __getHeaders(self, contentType="application/json", requestId=""):
 
-        headers = { "Accept": "application/json",
-                    "Content-Type": contentType}
-        
+        if not requestId:
+            self.requestId = datetime.now().strftime("%Y%m%d%H%M%S")
+
+        headers = {"Accept": "application/json", "Content-Type": contentType}
+
         try:
-            
+
             if self.access_token:
                 headers["Authorization"] = "Bearer " + self.access_token
         except Exception as err:
             pass
-        
+
         try:
             if self.sessionId:
-                headers["x-http-request-info"] = str({ "clientRequestId": {
-                                                            "sessionId": self.sessionId,
-                                                            "requestId": self.requestId,
-                                                        }
-                                                    })
+                headers["x-http-request-info"] = str(
+                    {
+                        "clientRequestId": {
+                            "sessionId": self.sessionId,
+                            "requestId": self.requestId,
+                        }
+                    }
+                )
         except Exception as err:
             print(err)
             print("no self.sessionId set")
             pass
 
         return headers
-            
-
 
     def __getOAuth(self):
         r = requests.post(
@@ -68,7 +66,7 @@ class Connection:
                 "username": self.username,
                 "password": self.password,
             },
-            headers=self.__getHeaders("application/x-www-form-urlencoded")
+            headers=self.__getHeaders("application/x-www-form-urlencoded"),
         )
 
         try:
@@ -110,7 +108,7 @@ class Connection:
                 "sessionTanActive": True,
                 "activated2FA": True,
             },
-            headers=self.__getHeaders("application/json")
+            headers=self.__getHeaders("application/json"),
         )
 
         if r.status_code == 201:
@@ -119,20 +117,21 @@ class Connection:
             print(r.status_code)
             print(r.json)
 
-
     def __getSessionTAN(self, validationHeaders):
         """
         Retrieves a valid TAN after the user has solved the challenge.
         """
 
         xauthinfoheaders = json.loads(validationHeaders["x-once-authentication-info"])
-        headers=self.__getHeaders("application/json")
-        headers["x-once-authentication-info"] = json.dumps( {"id": xauthinfoheaders["id"] } )
+        headers = self.__getHeaders("application/json")
+        headers["x-once-authentication-info"] = json.dumps(
+            {"id": xauthinfoheaders["id"]}
+        )
         if xauthinfoheaders["typ"] == "P_TAN_PUSH":
             # If Push-TAN, user needs to approve the TAN in app, that's it.
             print(
-                    "You are using PushTAN. Please use your smartphone's Comdirect photoTAN app to validate the access request to your 'personal area'."
-                )
+                "You are using PushTAN. Please use your smartphone's Comdirect photoTAN app to validate the access request to your 'personal area'."
+            )
             print(
                 "Please only continue once you have done so! Failure to validate this request for 5 consecutive times will result in your access being blocked."
             )
@@ -144,9 +143,12 @@ class Connection:
             tan = self.__challenge_ptan(xauthinfoheaders["challenge"])
             headers["x-once-authentication"] = tan
         else:
-            print("Sorry, the TAN type " + xauthinfoheaders["typ"] + " is not yet supported")
+            print(
+                "Sorry, the TAN type "
+                + xauthinfoheaders["typ"]
+                + " is not yet supported"
+            )
             exit(1)
-
 
         r = requests.patch(
             baseUrl + "api/session/clients/user/v1/sessions/" + self.sessionApiId,
@@ -154,7 +156,8 @@ class Connection:
                 "identifier": self.sessionApiId,
                 "sessionTanActive": True,
                 "activated2FA": True,
-            }, headers = headers 
+            },
+            headers=headers,
         )
         if r.status_code != 200:
             print(r.status_code)
@@ -168,32 +171,35 @@ class Connection:
         from PIL import Image
         import base64
         import io
+
         Image.open(io.BytesIO(base64.b64decode(challenge))).show()
-        print( " Please follow the usual photo TAN challenge process.")
+        print(" Please follow the usual photo TAN challenge process.")
         tan = input("Enter the TAN code: ")
         return tan
 
     def __getCDSecondary(self):
-        r = requests.post(baseUrl + "oauth/token",
-        headers = {
-            "Accept": "application/json",
-            "Content-Type" : "application/x-www-form-urlencoded",
-        },
-        data = {
-            "client_id" : self.client_id,
-            "client_secret" : self.client_secret,
-            "grant_type" : "cd_secondary",
-            "token" : self.access_token,
-        })
+        r = requests.post(
+            baseUrl + "oauth/token",
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            data={
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "grant_type": "cd_secondary",
+                "token": self.access_token,
+            },
+        )
 
         if r.status_code == 200:
-#            print("answer:")
-#            print(json.dumps(r.json()))
+            #            print("answer:")
+            #            print(json.dumps(r.json()))
 
             rjson = r.json()
             self.access_token = rjson["access_token"]
             self.refresh_token = rjson["refresh_token"]
-            self.scope = rjson["scope"] # Currently always "full access"
+            self.scope = rjson["scope"]  # Currently always "full access"
             self.kdnr = rjson["kdnr"]
             # This is always a fixed 599 (seconds), so no need to process
             self.expires_in = rjson["expires_in"]
@@ -201,62 +207,55 @@ class Connection:
             # self.bpid = rjson["bpid"]
             # self.kontaktId = rjson["kontaktId"]
         else:
-            raise RuntimeWarning( r.request.url +" exited with " + str(r.status_code) + ": " + json.dumps(r.json()))
+            raise RuntimeWarning(
+                r.request.url
+                + " exited with "
+                + str(r.status_code)
+                + ": "
+                + json.dumps(r.json())
+            )
 
     def refresh(self):
-        r = requests.post(baseUrl + "oauth/token",
-            headers = {
+        r = requests.post(
+            baseUrl + "oauth/token",
+            headers={
                 "Accept": "application/json",
-                "Content-Type" : "application/x-www-form-urlencoded",
+                "Content-Type": "application/x-www-form-urlencoded",
             },
-            data = {
-                "client_id" : self.client_id,
-                "client_secret" : self.client_secret,
-                "grant_type" : "refresh_token",
-                "refresh_token" : self.refresh_token,
-            }
+            data={
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "grant_type": "refresh_token",
+                "refresh_token": self.refresh_token,
+            },
         )
         if r.status_code == 200:
             rjson = r.json()
             self.access_token = rjson["access_token"]
             self.refresh_token = rjson["refresh_token"]
-            self.scope = rjson["scope"] # Currently always "full access"
+            self.scope = rjson["scope"]  # Currently always "full access"
 
     def revoke(self):
-        r = requests.delete(baseUrl + "oatuh/revoke",
-            headers = {
+        r = requests.delete(
+            baseUrl + "oatuh/revoke",
+            headers={
                 "Accept": "application/json",
-                "Content-Type" : "application/x-www-form-urlencoded",
+                "Content-Type": "application/x-www-form-urlencoded",
                 "Authorization": "Bearer " + self.access_token,
-            }
+            },
         )
         if r.status_code != 204:
-            print ( "Something went wrong trying to revoke your access token.")
+            print("Something went wrong trying to revoke your access token.")
 
-
-    def getMessagesList(self, start = 0, count = 1000):
-        r = requests.get(baseUrl + "api/messages/clients/user/v2/documents?paging-first=" + str(start) + "&paging-count=" + str(count),
-        headers = {"Accept": "application/json",
-            "Authorization": "Bearer " + self.access_token,
-            "x-http-request-info": str(
-                {
-                    "clientRequestId": {
-                        "sessionId": self.sessionId,
-                        "requestId": self.requestId,
-                    },
-                }
-            ),
-        })
-        if r.status_code != 200:
-            raise RuntimeWarning( r.request.url +" exited with " + str(r.status_code) + ": " + json.dumps(r.json()))
-        #print(json.dumps(r.json(), indent=4))
-        return r.json()
-
-    def downloadMessage(self, document):
-        r = requests.get(baseUrl + "api/messages/v2/documents/" + document["documentId"],
-                    headers = {
-                "Accept": document["mimeType"],
-                "Content-Type" : "application/x-www-form-urlencoded",
+    def getMessagesList(self, start=0, count=1000):
+        r = requests.get(
+            baseUrl
+            + "api/messages/clients/user/v2/documents?paging-first="
+            + str(start)
+            + "&paging-count="
+            + str(count),
+            headers={
+                "Accept": "application/json",
                 "Authorization": "Bearer " + self.access_token,
                 "x-http-request-info": str(
                     {
@@ -266,11 +265,40 @@ class Connection:
                         },
                     }
                 ),
-            })
+            },
+        )
+        if r.status_code != 200:
+            raise RuntimeWarning(
+                r.request.url
+                + " exited with "
+                + str(r.status_code)
+                + ": "
+                + json.dumps(r.json())
+            )
+        # print(json.dumps(r.json(), indent=4))
+        return r.json()
+
+    def downloadMessage(self, document):
+        r = requests.get(
+            baseUrl + "api/messages/v2/documents/" + document["documentId"],
+            headers={
+                "Accept": document["mimeType"],
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": "Bearer " + self.access_token,
+                "x-http-request-info": str(
+                    {
+                        "clientRequestId": {
+                            "sessionId": self.sessionId,
+                            "requestId": self.requestId,
+                        },
+                    }
+                ),
+            },
+        )
         if r.status_code == 200:
             return r.content
         else:
             print(r.status_code)
-            #print(json.dumps(r.json(), indent=4))
-            print( r.json())
+            # print(json.dumps(r.json(), indent=4))
+            print(r.json())
             raise RuntimeWarning("Document could not be retrieved!")

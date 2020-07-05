@@ -15,7 +15,7 @@ class Settings:
         # If you want comfort, put your data into the settings.ini
         # If you understandably don't want to leave all credentials in a clear textfile,
         # just leave them out and you will be prompted for them.
-        print("setting settings...")
+        print("loading settings...")
 
         absSettingsDirName = os.path.join(self.dirname, self.settingsFileName)
         if os.path.isfile(absSettingsDirName):
@@ -45,8 +45,10 @@ class Settings:
 
             #check out dir right away..
             self.outputDir = self.__createIfNotExistDir(self.__config['DEFAULT']['outputDir'])
-        
-        print("settings set.")
+            
+            print("settings set.")
+        else:
+            raise NameError("please provide settings.ini to start program.")
 
     def showSettings(self):
         for key in self.__config['DEFAULT']:

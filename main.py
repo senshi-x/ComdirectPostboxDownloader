@@ -9,7 +9,12 @@ class Main:
 
     def __init__(self, dirname):
         self.dirname = dirname
-        self.settings = Settings(dirname)
+        try:
+            self.settings = Settings(dirname)
+        except Exception as error:
+            print(error)
+            exit(0)
+        
         self.conn = False
         
         self.onlineDocumentsDict = {}

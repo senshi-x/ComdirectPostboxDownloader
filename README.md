@@ -1,30 +1,39 @@
 # Comdirect Postbox Downloader
 
 Lädt alle PDF-Dokumente aus einer beliebigen Zeitspanne herunter.
-Anforderung: Läuft nur auf Windows. Erfordert zwingend den Chrome-Browser, der installiert sein muss.
 
-Das Skript erfordert eine einzige Benutzereingabe (die PhotoTAN, die seit neustem für den Zugriff auf die Postbox erforderlich ist). Ansonsten gibt es optional eine Auswahlmöglichkeit der Zeitspanne in der Befehlszeile, sofern man diese nicht in der settings.ini festlegt.
+Benötigt wird Python 3.x
 
+Das Tool muss mittels Kommandozeile gestartet und bedient werden. Es ist zwingend erforderlich, die `settings.ini` anzulegen.
+Aktuell wir nur das Photo-PushTAN-Verfahren unterstützt. Das klassische PhotoTAN-Verfahren ist implementiert, aber noch nicht getestet.
+
+# Setup
+Im Verzeichnis einmalig ausführen.
+> pip -r requirements.txt
+
+Die `settings.ini` konfigurieren und bereitstellen (siehe Kapitel unten).
+
+Anschließend die **main.py** starten, z.B. mit
+> python main.py
 
 
 ## Settings
-Hier gibt es drei Werte zu setzen:
+Hier gibt es mehrere Werte zu setzen. Die folgenden sind optional. Sind diese nicht gesetzt, werden sie jedes Mal bei der Ausführung abgefragt. Jeder Wert kann einzeln gesetzt oder freigelassen werden. Das Speichern aller Zugangsdaten im Klartext kann ein Sicherheitsrisiko bedeuten, hier also mit Vernunft herangehen. Als Minimum empfiehlt es sich, zumindest das Passwort hier NICHT zu hinterlegen.
 - **user** = Deine Zugangsnummer
-- **pass** = Deine PIN/Passwort
-- **range** = Welche Zeitspanne soll heruntergeladen werden. Entspricht der Position in der Zeitspanne-auswahlbox in der Postbox (1 bis x). Ist kein Wert angegeben (range=), wird das Programm den Benutzer eine interaktive Auswahl anbieten.
-- **outputdir** = Ausgabeverzeichnis, in das die heruntergeladenen Dateien gespeichert werden sollen.
+- **pwd** = Deine PIN/Passwort
+- **clientId** = ClientID, die via API Access erhaltbar ist (https://kunde.comdirect.de/itx/oauth/privatkunden)
+- **clientSecret** = ClientSecret, welches ebenfalls in vorigem Link verfügbar ist
+
+Die folgenden Einstellungen erlauben es, das Verhalten des Downloads zu konfigurieren:
+- **outputDir** = Ausgabeverzeichnis, in das die heruntergeladenen Dateien gespeichert werden sollen.
+- **dryRun** = Leerlauf, das Herunterladen wird nur simuliert
+- **useSubFolders** = Legt die Dateien je nach Dateiname in Unterordner ab (alle Finanzreporte unter Finanzreporte, etc.)
+- **downloadOnlyFilenames** = Lädt nur Dateien herunter, deren Dateiname mit einem der hier angegeben Wörter beginnt. Bei False wird alles heruntergeladen.
+- **downloadOnlyFilenamesArray** = Liste der gewünschten Dateinamen
+- **downloadOnlyFromOnlineArchive** = Lädt nur Dateien aus dem Postbox-Archiv herunter.
 
 
 Siehe settings.ini.example als Beispieldatei.
-
-### Übliche Range-Werte (Stand Sep 2019)
-- 1: Letzte 30 Tage-MONAT
-- 2: Letztes halbes Jahr-HALBES_JAHR
-- 3: Gesamter Zeitraum-GESAMTER_ZEITRAUM
-- 4: 2019-2019
-- 5: 2018-2018
-- 6: 2017-2017
-- 7: 2016-2016
 
 ### Outputdir
 Es können relative Pfade angegeben werden. Diese werden ausgehend vom Skriptverzeichnis aufgelöst. Z.b. Dokumente als Unterverzeichnis.
@@ -34,7 +43,7 @@ Wichtig: "\" als Pfad-Trenner muss immer doppelt angegeben werden wie in obigem 
 
 
 ## Verwendet:
-- Chromedriver (from Chromium Project)
-- Selenium (E2E testing suite, used to manipulate browser inputs & navigation)
-
-Check licenses.md for their licenses and ensure you adhere to them if you use this code somewhere.
+- Python 3.x
+- Python-Bibliotheken:
+  - Pathvalidate (für Validierung der Ausgabedateinamen)
+  - Requests (für REST-Anfragen)

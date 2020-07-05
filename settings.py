@@ -114,12 +114,12 @@ class Settings:
         self.__printMessage("Checking if given outputDir exists...")
         
         if not os.path.isabs(dir):
-            dir = os.path.join(dirname, dir)
+            dir = os.path.join(self.dirname, dir)
 
         if not os.path.exists(dir):
             shouldCreateDir = self.__getInputForString("Path not found. Should I create it? (yes/no):")
             if shouldCreateDir.lower() in ["true", "yes", "y", "1"]:
-                os.makedirs(dir)            
+                os.makedirs(dir)
                 self.__printMessage("Path created: "+dir)
             else:
                 self.__printMessage("Path not created, script exited 0")

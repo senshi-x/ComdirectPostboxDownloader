@@ -1,7 +1,32 @@
 [DEFAULT]
+
+#comdirect login data
 user=Zugangsnummer
 pass=PIN/Passwort
+
+#comdirect API access data (https://kunde.comdirect.de/itx/oauth/privatkunden)
 clientId=ClientID, die via API Access erhaltbar ist (https://kunde.comdirect.de/itx/oauth/privatkunden)
 clientSecret=ClientSecret, welches ebenfalls in vorigem Link verfügbar ist
+
+#output directory
+outputDir=Dokumente
+
+#dryRun [True/False], bei dryRun=True wird nichts heruntergeladen; nur simuliert
+dryRun=False
+
+#useSubFolders[True/False], bei True werden Dokumente in Unterverzeichnisse sortiert ()
+useSubFolders=False
+
+#downloadOnlyFilenames [True/False], bei True werden nur Dateien heruntergeladen, die mit einem bestimmten Namen anfangen. Alle anderen werden übersprungen.
+downloadOnlyFilenames=True
+# gehört zu downloadOnlyFilenames: hier werden die Dateinamen angegeben, welche heruntergeladen werden sollen als Dictionary: 
+downloadOnlyFilenamesArray={"Finanzreport", "Jahressteuerbescheinigung", "Wertpapierabrechnung", "Steuermitteilung", "Gutschrift", "Dividentengutschrift", "Ertragsgutschrift"}
+
+#[True/False], if True, only documents in archive will be downloaded
+downloadOnlyFromOnlineArchive=True
+
+#not yet used WIP
 range=
-output=Dokumente
+#useLocalArchive=
+#localArchiveDir=
+#moveToLocalArchiveBeforeDate=

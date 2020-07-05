@@ -2,7 +2,7 @@
 
 #comdirect login data
 user=Zugangsnummer
-pass=PIN/Passwort
+pwd=PIN/Passwort
 
 #comdirect API access data (https://kunde.comdirect.de/itx/oauth/privatkunden)
 clientId=ClientID, die via API Access erhaltbar ist (https://kunde.comdirect.de/itx/oauth/privatkunden)

@@ -262,13 +262,13 @@ class Main:
 
             # check for setting "only download if filename is in filename list"
             if downloadOnlyFromOnlineArchive and not isDocArchived:
-                _Main__printStatus(idx, documentMeta, "SKIPPED - not in archive")
+                __printStatus(idx, documentMeta, "SKIPPED - not in archive")
                 countSkipped +=1
                 continue
 
             # check for setting "only download if filename is in filename list"
             if isDownloadOnlyFilename and not firstFilename in downloadFilenameList:
-                _Main__printStatus(idx, documentMeta, "SKIPPED - filename not in filename list")
+                __printStatus(idx, documentMeta, "SKIPPED - filename not in filename list")
                 countSkipped +=1
                 continue
 
@@ -290,7 +290,7 @@ class Main:
             if os.path.exists(filepath):
                 self.onlineAlreadyDownloadedIndicesList.append(idx)
                 if not overwrite:
-                    _Main__printStatus(idx, documentMeta, "SKIPPED - no overwrite")
+                    __printStatus(idx, documentMeta, "SKIPPED - no overwrite")
                     countSkipped +=1
                     continue
             else:
@@ -304,10 +304,10 @@ class Main:
                     f.write(docContent)
                     #shutil.copyfileobj(docContent, f)
                 os.utime(filepath, (moddate,moddate))
-                _Main__printStatus(idx, documentMeta, "DOWNLOADED")
+                __printStatus(idx, documentMeta, "DOWNLOADED")
                 countDownloaded +=1
             else:
-                _Main__printStatus(idx, documentMeta, "DOWNLOADED - dry run, so not really downloaded")
+                __printStatus(idx, documentMeta, "DOWNLOADED - dry run, so not really downloaded")
                 countDownloaded +=1
 
         #last line, summary status:

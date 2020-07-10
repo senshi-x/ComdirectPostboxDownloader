@@ -151,7 +151,7 @@ class Main:
             return
 
         messagesMeta = self.conn.getMessagesList(0, 1)
-        x = 1
+        x = 0
         # Process batches of 1000. Max batchsize is 1000 (API restriction)
         batchSize = 1000
         self.onlineDocumentsDict = {}

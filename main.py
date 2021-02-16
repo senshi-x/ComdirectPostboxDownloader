@@ -13,6 +13,7 @@ class Main:
             self.settings = Settings(dirname)
         except Exception as error:
             print(error)
+            input("Press ENTER to close. Create settings.ini from the example before trying again.")
             exit(0)
 
         self.conn = False

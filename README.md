@@ -9,7 +9,7 @@ Aktuell wir nur das Photo-PushTAN-Verfahren unterstützt. Das klassische PhotoTA
 
 # Setup
 Im Verzeichnis einmalig ausführen.
-> pip -r requirements.txt
+> pip install -r requirements.txt
 
 Die `settings.ini` konfigurieren und bereitstellen (siehe Kapitel unten).
 

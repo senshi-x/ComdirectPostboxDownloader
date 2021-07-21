@@ -1,12 +1,16 @@
 [DEFAULT]
 
 #comdirect login data
+# PLEASE NOTE:
+# The values for user, pw, clientID and clientSecret are PRIVATE and SENSITIVE. NEVER share them with ANYONE!
+# Die Werte für user, pw, clientID und clientSecret sind GEHEIM und SCHÜTZENSWERT. Teile sie NIEMALS mit irgendjemanden!
 user=Zugangsnummer
 pwd=PIN/Passwort
 
 #comdirect API access data (https://kunde.comdirect.de/itx/oauth/privatkunden)
-clientId=ClientID, die via API Access erhaltbar ist (https://kunde.comdirect.de/itx/oauth/privatkunden)
-clientSecret=ClientSecret, welches ebenfalls in vorigem Link verfügbar ist
+#ClientID+Secret, die via API Access abrufbar ist (https://kunde.comdirect.de/itx/oauth/privatkunden)
+clientId=**** 
+clientSecret=****
 
 #output directory
 outputDir=Dokumente

@@ -142,6 +142,10 @@ class Connection:
             # If photoTAN, user needs to solve the challenge and provide the tan manually.
             tan = self.__challenge_ptan(xauthinfoheaders["challenge"])
             headers["x-once-authentication"] = tan
+        elif xauthinfoheaders["typ"] == "M_TAN":
+            # If mobile TAN, user gets TAN via mobile.
+            tan = self.__challenge_mtan(xauthinfoheaders["challenge"])
+            headers["x-once-authentication"] = tan
         else:
             print(
                 "Sorry, the TAN type "
@@ -174,6 +178,15 @@ class Connection:
 
         Image.open(io.BytesIO(base64.b64decode(challenge))).show()
         print(" Please follow the usual photo TAN challenge process.")
+        tan = input("Enter the TAN code: ")
+        return tan
+
+    def __challenge_mtan(self, challenge):
+        """
+        Challenge to get the mobile TAN
+        """
+
+        print(" Please follow the usual mobile TAN challenge process.")
         tan = input("Enter the TAN code: ")
         return tan
 

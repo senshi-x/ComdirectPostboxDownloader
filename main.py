@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#!/usr/bin/env python3
 
 from ComdirectConnection import Connection
 from settings import Settings

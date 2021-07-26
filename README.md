@@ -4,8 +4,10 @@ Lädt alle PDF-Dokumente aus einer beliebigen Zeitspanne herunter.
 
 Benötigt wird Python 3.x
 
-Das Tool muss mittels Kommandozeile gestartet und bedient werden. Es ist zwingend erforderlich, die `settings.ini` anzulegen.
-Aktuell wir nur das Photo-PushTAN-Verfahren unterstützt. Das klassische PhotoTAN-Verfahren ist implementiert, aber noch nicht getestet.
+Das Tool muss mittels Kommandozeile gestartet und bedient werden. 
+Es ist zwingend erforderlich, die `settings.ini` anzulegen.
+Es werden sowohl das Photo-PushTAN- als auch Mobile-TAN-Verfahren unterstützt. 
+Das klassische PhotoTAN-Verfahren ist implementiert, aber noch nicht getestet.
 
 # Setup
 Im Verzeichnis einmalig ausführen.

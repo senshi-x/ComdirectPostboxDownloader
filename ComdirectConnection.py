@@ -302,3 +302,16 @@ class Connection:
             # print(json.dumps(r.json(), indent=4))
             print(r.json())
             raise RuntimeWarning("Document could not be retrieved!")
+
+    def getBalances(self):
+        r = requests.get(
+            baseUrl + "api/banking/clients/user/v2/accounts/balances",
+            headers = self.__getHeaders()
+        )
+        if r.status_code == 200:
+            return r.content
+        else:
+            print(r.status_code)
+            # print(json.dumps(r.json(), indent=4))
+            print(r.json())
+            raise RuntimeWarning("Document could not be retrieved!")

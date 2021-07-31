@@ -4,6 +4,7 @@ from pathvalidate import sanitize_filename
 import os
 import time
 import datetime
+from typing import TypeVar
 
 
 class Main:
@@ -16,7 +17,7 @@ class Main:
             input("Press ENTER to close. Create settings.ini from the example before trying again.")
             exit(0)
 
-        self.conn = False
+        self.conn : Connection = False
 
         self.onlineDocumentsDict = {}
         self.onlineAdvertismentIndicesList = []
@@ -68,6 +69,7 @@ class Main:
             print("4. Show Status Online Files ")
             #            print("5. (WIP) ")
             print("6. Start Download / Update Local Files ")
+            print("7. Show balances ")
             print("0. Exit ")
             self.__printFullWidth("--")
 
@@ -116,6 +118,11 @@ class Main:
                 self.__startConnection()
                 self.__loadDocuments()
                 self.__processOnlineDocuments()
+            elif val == 7:
+                # start download of files
+                print("-7-")
+                self.__startConnection()
+                self.__getBalances()
             elif val == 0:
                 loop = False
             else:
@@ -164,6 +171,12 @@ class Main:
                 self.onlineDocumentsDict[x + idx] = messagesMeta["values"][idx]
 
             x += batchSize
+
+    def __getBalances(self):
+        if not self.conn:
+            raise NameError("conn not set!")
+        print(self.conn.getBalances())
+
 
     def __showStatusOnlineDocuments(self):
 

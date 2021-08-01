@@ -48,7 +48,14 @@ class Main:
             filler = int(spaces)
             print(filler * "-" + printString)
 
-    def __printLeftRight(self, printLeftString, printRightString, filler=".", width=74):
+    def __printLeftRight(self, printLeftString, printRightString, filler=" ", width=74):
+        """
+        Print two strings with extra spaces auto-filled.
+        left String (required)
+        right String (required)
+        filler String (optional, default " ")
+        width int (optional, default=74)
+        """
         printLeftString = str(printLeftString)
         printRightString = str(printRightString)
         spaces = width - len(printLeftString) - len(printRightString)
@@ -121,12 +128,13 @@ class Main:
                 self.__loadDocuments()
                 self.__processOnlineDocuments()
             elif val == 7:
-                # start download of files
+                # show balance
                 print("-7-")
                 self.__startConnection()
                 self.__getBalances()
             elif val == 0:
                 loop = False
+                self.__stopConnection()
             else:
                 print("not a valid input")
 
@@ -153,6 +161,12 @@ class Main:
         else:
             print("You are already online!")
 
+    def __stopConnection(self):
+        """
+            Properly shut down CD connection.
+        """
+        self.conn.logout()
+
     def __loadDocuments(self):
         if not self.conn:
             raise NameError("conn not set!")
@@ -177,7 +191,14 @@ class Main:
     def __getBalances(self):
         if not self.conn:
             raise NameError("conn not set!")
-        print(self.conn.getBalances())
+        balances = self.conn.getBalances();
+        for account in balances['values']:
+            self.__printFullWidth("--")
+            self.__printLeftRight(
+                account["account"]["iban"] + " (" + account['account']['accountType']['text'] + ")", account['balance']['value'] + account['balance']['unit']
+            )
+            self.__printFullWidth(account)
+            
 
 
     def __showStatusOnlineDocuments(self):

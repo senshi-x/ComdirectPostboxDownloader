@@ -3,27 +3,34 @@ import random
 import string
 import json
 from datetime import datetime
+from threading import Timer
 
 baseUrl = "https://api.comdirect.de/"
 
 
 class Connection:
     def __init__(self, client_id, client_secret, username, password):
-        self.client_id = client_id
-        self.client_secret = client_secret
+        self.client_id : str = client_id
+        self.client_secret : str = client_secret
         self.username = username
         self.password = password
         self.sessionId = ""
-        self.requestId = ""
         for _ in range(12):
             self.sessionId += random.choice(string.ascii_lowercase + string.digits)
         self.requestId = datetime.now().strftime("%Y%m%d%H%M%S")
+        self.refreshTimer : Timer = None
+        self.refreshTimerRunning = False
 
     def login(self):
         self.__getOAuth()
         self.__getSession()
         self.__getTANChallenge()
         self.__getCDSecondary()
+        self.__storeData()
+        self.__startRefreshTimer()
+
+    def logout(self):
+        self.__revoke()
 
     def __getHeaders(self, contentType="application/json", requestId=""):
 
@@ -206,15 +213,13 @@ class Connection:
         )
 
         if r.status_code == 200:
-            #            print("answer:")
-            #            print(json.dumps(r.json()))
+            #print(json.dumps(r.json()))
 
             rjson = r.json()
             self.access_token = rjson["access_token"]
             self.refresh_token = rjson["refresh_token"]
             self.scope = rjson["scope"]  # Currently always "full access"
             self.kdnr = rjson["kdnr"]
-            # This is always a fixed 599 (seconds), so no need to process
             self.expires_in = rjson["expires_in"]
             # The following are provided, but serve no actual use.
             # self.bpid = rjson["bpid"]
@@ -228,7 +233,20 @@ class Connection:
                 + json.dumps(r.json())
             )
 
-    def refresh(self):
+    def __storeData(self):
+        with open('cache','w') as f:
+            f.write(json.dumps(self.__dict__))
+
+    def __loadData(self):
+        try:
+            with open('cache', 'r') as f:
+                self.__dict__ = json.loads(f.read())
+                return True
+        except IOError:
+            return False
+
+    def __refresh(self):
+        self.refreshTimerRunning = False
         r = requests.post(
             baseUrl + "oauth/token",
             headers={
@@ -247,10 +265,13 @@ class Connection:
             self.access_token = rjson["access_token"]
             self.refresh_token = rjson["refresh_token"]
             self.scope = rjson["scope"]  # Currently always "full access"
+            self.__startRefreshTimer()
+        
 
-    def revoke(self):
+    def __revoke(self):
+        self.__stopRefreshTimer()
         r = requests.delete(
-            baseUrl + "oatuh/revoke",
+            baseUrl + "oauth/revoke",
             headers={
                 "Accept": "application/json",
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -260,6 +281,18 @@ class Connection:
         if r.status_code != 204:
             print("Something went wrong trying to revoke your access token.")
 
+    def __startRefreshTimer(self):
+        if not self.refreshTimerRunning:
+            # When logging in, we get told how long tokens may live. We refresh 10 seconds before that.
+            self.refreshTimer = Timer(self.expires_in - 10, self.__refresh)
+            self.refreshTimer.daemon = True
+            self.refreshTimer.start()
+            self.refreshTimerRunning = True
+
+    def __stopRefreshTimer(self):
+        self.refreshTimer.cancel()
+        self.refreshTimerRunning = False
+        
     def getMessagesList(self, start=0, count=1000):
         r = requests.get(
             baseUrl
@@ -322,7 +355,7 @@ class Connection:
             headers = self.__getHeaders()
         )
         if r.status_code == 200:
-            return r.content
+            return r.json()
         else:
             print(r.status_code)
             # print(json.dumps(r.json(), indent=4))

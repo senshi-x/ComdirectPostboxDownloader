@@ -338,7 +338,7 @@ class Main:
                 subFolder = "html"
 
             if useSubFolders:
-                myOutputDir = os.path.join(outputDir, subFolder)
+                myOutputDir = os.path.join(outputDir, sanitize_filename(subFolder))
                 if not os.path.exists(myOutputDir):
                     os.makedirs(myOutputDir)
 

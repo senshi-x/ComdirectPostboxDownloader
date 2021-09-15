@@ -14,6 +14,9 @@ clientSecret=****
 
 #output directory
 outputDir=Dokumente
+# Wenn True: Bei Beenden des Programmes werden Session-Informationen nicht gelöscht. Wird das Programm anschließend wiederverwendet, ist keine erneute TAN-Freigabe notwendig.
+# Sessions sind maximal 10 Minuten gültig. Zehn Minuten nach Beenden des Programms ist eine erneute TAN-Freigabe immer notwendig.
+stayLoggedIn=True
 
 #dryRun [True/False], bei dryRun=True wird nichts heruntergeladen; nur simuliert
 dryRun=False

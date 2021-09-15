@@ -2,7 +2,7 @@ import requests
 import random
 import string
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Timer
 
 baseUrl = "https://api.comdirect.de/"
@@ -22,15 +22,18 @@ class Connection:
         self.refreshTimerRunning = False
 
     def login(self):
-        self.__getOAuth()
-        self.__getSession()
-        self.__getTANChallenge()
-        self.__getCDSecondary()
-        self.__storeData()
+        result = self.__loadData()
+        if result == False:
+            self.__getOAuth()
+            self.__getSession()
+            self.__getTANChallenge()
+            self.__getCDSecondary()
+            self.__storeData()
         self.__startRefreshTimer()
 
     def logout(self):
         self.__revoke()
+        self.__deleteData()
 
     def __getHeaders(self, contentType="application/json", requestId=""):
 
@@ -235,17 +238,37 @@ class Connection:
 
     def __storeData(self):
         with open('cache','w') as f:
-            f.write(json.dumps(self.__dict__))
+            data = self.__dict__.copy()
+            data.pop("refreshTimer")
+            data.pop("refreshTimerRunning")
+            data['expirationtime'] = (datetime.now() + timedelta(seconds = self.expires_in)).isoformat()
+            f.write(json.dumps(data, indent=4))
 
     def __loadData(self):
         try:
             with open('cache', 'r') as f:
-                self.__dict__ = json.loads(f.read())
+                data = json.loads(f.read())
+                expires_in = datetime.fromisoformat(data['expirationtime']) - datetime.now()
+                # If token expires very soon, just return False to indicate a regular startup/login sequence should occur.
+                if 'expires_in' not in data:
+                    return False
+                if expires_in.total_seconds() > 10:
+                    data['expires_in'] = expires_in.total_seconds()
+                else:
+                    return False
+                data['refreshTimerRunning'] = False
+                self.__dict__ = data
                 return True
-        except IOError:
+        except (IOError, json.JSONDecodeError) :
             return False
 
-    def __refresh(self):
+    def __deleteData(self):
+        import os
+        if os.path.exists('cache'):
+            os.remove('cache')
+
+
+    def refresh(self):
         self.refreshTimerRunning = False
         r = requests.post(
             baseUrl + "oauth/token",
@@ -265,6 +288,7 @@ class Connection:
             self.access_token = rjson["access_token"]
             self.refresh_token = rjson["refresh_token"]
             self.scope = rjson["scope"]  # Currently always "full access"
+            self.__storeData()
             self.__startRefreshTimer()
         
 
@@ -284,7 +308,7 @@ class Connection:
     def __startRefreshTimer(self):
         if not self.refreshTimerRunning:
             # When logging in, we get told how long tokens may live. We refresh 10 seconds before that.
-            self.refreshTimer = Timer(self.expires_in - 10, self.__refresh)
+            self.refreshTimer = Timer(self.expires_in - 10, self.refresh)
             self.refreshTimer.daemon = True
             self.refreshTimer.start()
             self.refreshTimerRunning = True
@@ -358,6 +382,5 @@ class Connection:
             return r.json()
         else:
             print(r.status_code)
-            # print(json.dumps(r.json(), indent=4))
-            print(r.json())
+            print(json.dumps(r.json(), indent=4))
             raise RuntimeWarning("Document could not be retrieved!")

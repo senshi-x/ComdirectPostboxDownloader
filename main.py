@@ -148,16 +148,13 @@ class Main:
             ToDo: Check if all settings are set for connection!
         """
         if self.settings and not self.conn:
-            try:
-                self.conn = Connection(
-                    username=self.settings.getValueForKey("user"),
-                    password=self.settings.getValueForKey("pwd"),
-                    client_id=self.settings.getValueForKey("clientId"),
-                    client_secret=self.settings.getValueForKey("clientSecret"),
-                )
-                self.conn.login()
-            except Exception as err:
-                print(err)
+            self.conn = Connection(
+                username=self.settings.getValueForKey("user"),
+                password=self.settings.getValueForKey("pwd"),
+                client_id=self.settings.getValueForKey("clientId"),
+                client_secret=self.settings.getValueForKey("clientSecret"),
+            )
+            self.conn.login()
         else:
             print("You are already online!")
 
@@ -165,7 +162,10 @@ class Main:
         """
             Properly shut down CD connection.
         """
-        self.conn.logout()
+        if self.settings.getBoolValueForKey("stayLoggedIn") == True:
+            self.conn.refresh()
+        else:
+            self.conn.logout()
 
     def __loadDocuments(self):
         if not self.conn:

@@ -1,5 +1,5 @@
 [DEFAULT]
-
+# NOTE: You may NOT use inline comments! Inline comments will be recognized as part of the value!
 #comdirect login data
 # PLEASE NOTE:
 # The values for user, pw, clientID and clientSecret are PRIVATE and SENSITIVE. NEVER share them with ANYONE!

@@ -10,8 +10,11 @@ Es werden sowohl das Photo-PushTAN- als auch Mobile-TAN-Verfahren unterstützt.
 Das klassische PhotoTAN-Verfahren ist implementiert, aber noch nicht getestet.
 
 # Setup
-Im Verzeichnis einmalig ausführen.
+Im Verzeichnis einmalig ausführen:
 > pip install -r requirements.txt
+ 
+oder
+> python -m pip install -r requirements.txt
 
 Die `settings.ini` konfigurieren und bereitstellen (siehe Kapitel unten).
 

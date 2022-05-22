@@ -35,7 +35,7 @@ Die folgenden Einstellungen erlauben es, das Verhalten des Downloads zu konfigur
 - **useSubFolders** = Legt die Dateien je nach Dateiname in Unterordner ab (alle Finanzreporte unter Finanzreporte, etc.)
 - **downloadOnlyFilenames** = Lädt nur Dateien herunter, deren Dateiname mit einem der hier angegeben Wörter beginnt. Bei False wird alles heruntergeladen.
 - **downloadOnlyFilenamesArray** = Liste der gewünschten Dateinamen
-- **downloadOnlyFromOnlineArchive** = Lädt nur Dateien aus dem Postbox-Archiv herunter.
+- **downloadSource** = Auswahl der Datenherkunft.
 
 
 Siehe settings.ini.example als Beispieldatei.

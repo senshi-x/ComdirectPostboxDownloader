@@ -26,8 +26,8 @@ downloadOnlyFilenames=True
 # gehört zu downloadOnlyFilenames: hier werden die Dateinamen angegeben, welche heruntergeladen werden sollen als Dictionary: 
 downloadOnlyFilenamesArray={"Finanzreport", "Jahressteuerbescheinigung", "Wertpapierabrechnung", "Steuermitteilung", "Gutschrift", "Dividendengutschrift", "Ertragsgutschrift"}
 
-#[True/False], if True, only documents in archive will be downloaded
-downloadOnlyFromOnlineArchive=True
+#[archivedOnly/notArchivedOnly/all] selection for document source
+downloadSource=archivedOnly
 
 #not yet used WIP
 range=

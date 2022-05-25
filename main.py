@@ -3,9 +3,16 @@
 from ComdirectConnection import Connection
 from settings import Settings
 from pathvalidate import sanitize_filename
+from enum import Enum
 import os
 import time
 import datetime
+
+
+class DownloadSource(Enum):
+    archivedOnly = 'archivedOnly'
+    notArchivedOnly = 'notArchivedOnly'
+    all = 'all'
 
 
 class Main:
@@ -268,8 +275,8 @@ class Main:
         downloadFilenameList = self.settings.getValueForKey(
             "downloadOnlyFilenamesArray"
         )
-        downloadOnlyFromOnlineArchive = self.settings.getBoolValueForKey(
-            "downloadOnlyFromOnlineArchive"
+        downloadSource = self.settings.getValueForKey(
+            "downloadSource"
         )
 
         countAll = len(self.onlineDocumentsDict)
@@ -316,9 +323,10 @@ class Main:
             if not isAlreadyRead:
                 self.onlineUnreadIndicesList.append(idx)
 
-            # check for setting "only download if filename is in filename list"
-            if downloadOnlyFromOnlineArchive and not isDocArchived:
-                __printStatus(idx, documentMeta, "SKIPPED - not in archive")
+            # check for setting "download source"
+            if downloadSource == DownloadSource.archivedOnly.value and not isDocArchived or\
+                    downloadSource == DownloadSource.notArchivedOnly.value and isDocArchived:
+                __printStatus(idx, documentMeta, "SKIPPED - not in selected download source")
                 countSkipped += 1
                 continue
 

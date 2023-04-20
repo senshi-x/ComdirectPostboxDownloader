@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from ComdirectConnection import Connection
-from settings import Settings
+from .ComdirectConnection import Connection
+from .settings import Settings
 from pathvalidate import sanitize_filename
 from enum import Enum
 import os
@@ -10,19 +10,21 @@ import datetime
 
 
 class DownloadSource(Enum):
-    archivedOnly = 'archivedOnly'
-    notArchivedOnly = 'notArchivedOnly'
-    all = 'all'
+    archivedOnly = "archivedOnly"
+    notArchivedOnly = "notArchivedOnly"
+    all = "all"
 
 
 class Main:
-    def __init__(self, dirname):
-        self.dirname = dirname
+    def __init__(self, settings_parameter):
+        self._settings_parameter = settings_parameter
         try:
-            self.settings = Settings(dirname)
+            self.settings = Settings(self._settings_parameter)
         except Exception as error:
             print(error)
-            input("Press ENTER to close. Create settings.ini from the example before trying again.")
+            input(
+                "Press ENTER to close. Create settings.ini from the example before trying again."
+            )
             exit(0)
 
         self.conn = False
@@ -137,7 +139,7 @@ class Main:
 
     def __startConnection(self):
         """
-            ToDo: Check if all settings are set for connection!
+        ToDo: Check if all settings are set for connection!
         """
         if self.settings and not self.conn:
             try:
@@ -175,7 +177,6 @@ class Main:
             x += batchSize
 
     def __showStatusOnlineDocuments(self):
-
         self.onlineAdvertismentIndicesList = []
         self.onlineArchivedIndicesList = []
         self.onlineFileNameMatchingIndicesList = []
@@ -242,7 +243,6 @@ class Main:
         self.__printFullWidth("--")
 
     def __processOnlineDocuments(self, isCountRun=False):
-
         if not self.onlineDocumentsDict:
             return
 
@@ -275,9 +275,7 @@ class Main:
         downloadFilenameList = self.settings.getValueForKey(
             "downloadOnlyFilenamesArray"
         )
-        downloadSource = self.settings.getValueForKey(
-            "downloadSource"
-        )
+        downloadSource = self.settings.getValueForKey("downloadSource")
 
         countAll = len(self.onlineDocumentsDict)
         countProcessed = 0
@@ -324,9 +322,15 @@ class Main:
                 self.onlineUnreadIndicesList.append(idx)
 
             # check for setting "download source"
-            if downloadSource == DownloadSource.archivedOnly.value and not isDocArchived or\
-                    downloadSource == DownloadSource.notArchivedOnly.value and isDocArchived:
-                __printStatus(idx, documentMeta, "SKIPPED - not in selected download source")
+            if (
+                downloadSource == DownloadSource.archivedOnly.value
+                and not isDocArchived
+                or downloadSource == DownloadSource.notArchivedOnly.value
+                and isDocArchived
+            ):
+                __printStatus(
+                    idx, documentMeta, "SKIPPED - not in selected download source"
+                )
                 countSkipped += 1
                 continue
 
@@ -389,7 +393,3 @@ class Main:
             print("Processed: " + str(countProcessed) + " files")
             print("Downloaded: " + str(countDownloaded) + " files")
             print("Skipped: " + str(countSkipped) + " files")
-
-
-dirname = os.path.dirname(__file__)
-main = Main(dirname)

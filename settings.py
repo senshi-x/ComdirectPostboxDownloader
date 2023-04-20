@@ -1,15 +1,29 @@
-from ComdirectConnection import Connection
 import os
 import configparser
-from pathvalidate import sanitize_filename
-import datetime
 import getpass
 
 
 class Settings:
-    def __init__(self, dirname):
-        self.dirname = dirname
-        self.settingsFileName = "settings.ini"
+    SETTINGS_FILENAME = "settings.ini"
+
+    def __init__(self, settings_parameter):
+        if os.path.isfile(settings_parameter):
+            self.absSettingsDirName = (
+                settings_parameter
+                if os.path.isabs(settings_parameter)
+                else os.path.join(os.getcwd(), settings_parameter)
+            )
+        elif os.path.isdir(settings_parameter):
+            self.absSettingsDirName = (
+                os.path.join(settings_parameter, self.SETTINGS_FILENAME)
+                if os.path.isabs(settings_parameter)
+                else os.path.join(
+                    os.getcwd(), settings_parameter, self.SETTINGS_FILENAME
+                )
+            )
+        else:
+            raise NameError("please provide settings.ini or path ")
+
         self.readSettings()
 
     def readSettings(self):
@@ -18,10 +32,9 @@ class Settings:
         # just leave them out and you will be prompted for them.
         print("loading settings...")
 
-        absSettingsDirName = os.path.join(self.dirname, self.settingsFileName)
-        if os.path.isfile(absSettingsDirName):
+        if os.path.isfile(self.absSettingsDirName):
             self.__config = configparser.ConfigParser()
-            self.__config.read(absSettingsDirName)
+            self.__config.read(self.absSettingsDirName)
             try:
                 if not self.__isSettingNameFilledInConfig("user"):
                     self.__config["DEFAULT"]["user"] = self.__getInputForString(
@@ -132,7 +145,7 @@ class Settings:
         self.__printMessage("Checking if given outputDir exists...")
 
         if not os.path.isabs(dir):
-            dir = os.path.join(self.dirname, dir)
+            dir = os.path.join(os.path.dirname(self.absSettingsDirName), dir)
 
         if not os.path.exists(dir):
             shouldCreateDir = self.__getInputForString(

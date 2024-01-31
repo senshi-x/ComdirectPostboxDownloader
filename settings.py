@@ -1,13 +1,10 @@
-from ComdirectConnection import Connection
 import os
 import configparser
-from pathvalidate import sanitize_filename
-import datetime
 import getpass
 
 
 class Settings:
-    def __init__(self, dirname):
+    def __init__(self, dirname: str):
         self.dirname = dirname
         self.settingsFileName = "settings.ini"
         self.readSettings()
@@ -16,7 +13,6 @@ class Settings:
         # If you want comfort, put your data into the settings.ini
         # If you understandably don't want to leave all credentials in a clear textfile,
         # just leave them out and you will be prompted for them.
-        print("loading settings...")
 
         absSettingsDirName = os.path.join(self.dirname, self.settingsFileName)
         if os.path.isfile(absSettingsDirName):
@@ -24,55 +20,38 @@ class Settings:
             self.__config.read(absSettingsDirName)
             try:
                 if not self.__isSettingNameFilledInConfig("user"):
-                    self.__config["DEFAULT"]["user"] = self.__getInputForString(
-                        "Please enter your user number / Kundennummer: "
-                    )
+                    self.__config["DEFAULT"]["user"] = self.__getInputForString("Bitte geben Sie Ihre Kundennummer ein: ")
 
                 if not self.__isSettingNameFilledInConfig("pwd"):
-                    self.__config["DEFAULT"]["pwd"] = getpass.getpass(
-                        prompt="Please enter your password: ", stream=None
-                    )
+                    self.__config["DEFAULT"]["pwd"] = getpass.getpass(prompt="Bitte geben Sie das dazugehörige Passwort ein: ", stream=None)
 
                 if not self.__isSettingNameFilledInConfig("clientId"):
-                    self.__config["DEFAULT"]["clientId"] = self.__getInputForString(
-                        "Please enter your clientId for API access: "
-                    )
+                    self.__config["DEFAULT"]["clientId"] = self.__getInputForString("Bitte geben Sie die oAuth clientId für den API-Zugang ein: ")
 
                 if not self.__isSettingNameFilledInConfig("clientSecret"):
-                    self.__config["DEFAULT"]["clientSecret"] = self.__getInputForString(
-                        "Please enter your clientSecret for API access: "
-                    )
+                    self.__config["DEFAULT"]["clientSecret"] = self.__getInputForString("Bitte geben Sie Ihr oAuth clientSecret für den API Zugang ein: ")
 
                 if not self.__isSettingNameFilledInConfig("outputDir"):
-                    self.__config["DEFAULT"]["outputDir"] = self.__getInputForString(
-                        "Please enter the path to the folder you want reports to be downloaded to: "
-                    )
+                    self.__config["DEFAULT"]["outputDir"] = self.__getInputForString("Bitte geben Sie das Zielverzeichnis an, in welches die Dokumente heruntergeladen werden sollen: ")
 
-                if not self.__config.has_option(None, "dryRun"):
-                    self.__config["DEFAULT"][
-                        "dryRun"
-                    ] = self.__checkInputForBoolTrueString(
-                        self.__getInputForString(
-                            "Should the run a test run? (no files get downloaded) [yes/no]: "
-                        )
-                    )
+                if not self.__config.has_option("", "dryRun"):
+                    self.__config["DEFAULT"]["dryRun"] = str(self.__isTruthy(self.__getInputForString("Soll dies ein Testlauf sein (keine Dateien werden heruntergeladen)? [ja/nein]: ")))
             except Exception as error:
                 print("ERROR", error)
                 exit(-1)
 
             # check out dir right away..
-            self.outputDir = self.__createIfNotExistDir(
-                self.__config["DEFAULT"]["outputDir"]
-            )
-
-            print("settings set.")
+            self.outputDir = self.__createIfNotExistDir(self.__config["DEFAULT"]["outputDir"])
         else:
             raise NameError("please provide settings.ini to start program.")
+
+    def getSettings(self):
+        return self.__config["DEFAULT"]
 
     def showSettings(self):
         for key in self.__config["DEFAULT"]:
             output = key + ": "
-            if key == "pwd":
+            if key in ["pwd", "clientsecret"]:
                 pwOut = ""
                 for _ in range(len(self.__config["DEFAULT"][key])):
                     pwOut += "*"
@@ -81,69 +60,48 @@ class Settings:
                 output += self.__config["DEFAULT"][key]
             print(output)
 
-    def getValueForKey(self, settingName, section="DEFAULT"):
+    def getValueForKey(self, settingName: str, section: str = "DEFAULT"):
         if self.__isSettingNameFilledInConfig(settingName, section):
             return self.__config[section][settingName]
         else:
             raise NameError("SettingName not set")
 
-    def getBoolValueForKey(self, settingName, section="DEFAULT"):
+    def getBoolValueForKey(self, settingName: str, section: str = "DEFAULT"):
         if self.__isSettingNameFilledInConfig(settingName, section):
-            return self.__checkInputForBoolTrue(self.__config[section][settingName])
+            return self.__isTruthy(self.__config[section][settingName])
         else:
             raise NameError("SettingName not set")
 
-    def __isSettingNameFilledInConfig(self, settingName, section="DEFAULT"):
-        isAvailAndFilled = True
-
+    def __isSettingNameFilledInConfig(self, settingName: str, section: str = "DEFAULT"):
         if settingName not in self.__config[section]:
-            isAvailAndFilled = False
+            return False
+        elif not self.__config.has_option("", settingName):
+            return False
+        elif not self.__config[section][settingName]:
+            return False
+        return True
 
-        if not self.__config.has_option(None, settingName):
-            isAvailAndFilled = False
-
-        if not self.__config[section][settingName]:
-            isAvailAndFilled = False
-
-        return isAvailAndFilled
-
-    def __getInputForString(self, printString):
+    def __getInputForString(self, printString: str):
         # print("----------------------------------------------------------------")
         inp = input(printString)
         # print("----------------------------------------------------------------")
         return inp
 
-    def __printMessage(self, message):
+    def __printMessage(self, message: str):
         print(message)
 
-    def __checkInputForBoolTrue(self, inputString):
-        retValue = False
-        if inputString.lower() in ["true", "yes", "y", "1"]:
-            retValue = True
-        return retValue
+    def __isTruthy(self, inputString: str):
+        return inputString.lower() in ["ja", "j", "true", "yes", "y", "1"]
 
-    def __checkInputForBoolTrueString(self, inputString):
-        retValue = "False"
-        if inputString.lower() in ["true", "yes", "y", "1"]:
-            retValue = "True"
-        return retValue
-
-    def __createIfNotExistDir(self, dir):
-        self.__printMessage("Checking if given outputDir exists...")
-
+    def __createIfNotExistDir(self, dir: str):
         if not os.path.isabs(dir):
             dir = os.path.join(self.dirname, dir)
 
         if not os.path.exists(dir):
-            shouldCreateDir = self.__getInputForString(
-                "Path not found. Should I create it? (yes/no):"
-            )
-            if shouldCreateDir.lower() in ["true", "yes", "y", "1"]:
+            shouldCreateDir = self.__getInputForString("Zielverzeichnis nicht gefunden. Soll es erstell werden? (ja/nein): ")
+            if self.__isTruthy(shouldCreateDir):
                 os.makedirs(dir)
-                self.__printMessage("Path created: " + dir)
             else:
-                self.__printMessage("Path not created, script exited 0")
-                exit
-        else:
-            self.__printMessage("Moving on. Path exists: " + dir)
+                self.__printMessage("Zielverzeichnis wurde nicht erstellt. Bis zum nächsten Mal!")
+                exit(0)
         return dir

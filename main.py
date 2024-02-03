@@ -232,7 +232,8 @@ class Main:
         table.add_row("Davon Werbung", str(len(self.onlineAdvertismentIndicesList)), style="dim")
         table.add_row("Davon ungelesen", str(len(self.onlineUnreadIndicesList)), style="dim")
         table.add_row("Davon archiviert", str(len(self.onlineArchivedIndicesList)), style="dim")
-        table.add_row("Davon in der Liste gewünschter Dateinamen", str(len(self.onlineFileNameMatchingIndicesList)), style="dim")
+        if self.settings.getBoolValueForKey("downloadOnlyFilenames"):
+            table.add_row("Davon in der Liste gewünschter Dateinamen", str(len(self.onlineFileNameMatchingIndicesList)), style="dim")
         print(table)
 
     def __processOnlineDocuments(self, isCountRun: bool = False):
@@ -268,7 +269,6 @@ class Main:
             overwrite = False  # Only download new files
             useSubFolders = self.settings.getBoolValueForKey("useSubFolders")
             outputDir = self.settings.getValueForKey("outputDir")
-            isDownloadOnlyFilename = self.settings.getBoolValueForKey("downloadOnlyFilenames")
             downloadFilenameList = self.settings.getValueForKey("downloadOnlyFilenamesArray")
             downloadSource = self.settings.getValueForKey("downloadSource")
 
@@ -304,7 +304,7 @@ class Main:
                     continue
 
                 # check for setting "only download if filename is in filename list"
-                if isDownloadOnlyFilename and not firstFilename in downloadFilenameList:
+                if self.settings.getBoolValueForKey("downloadOnlyFilenames") and not firstFilename in downloadFilenameList:
                     __printStatus(idx, document, "SKIPPED - filename not in filename list")
                     countSkipped += 1
                     continue

@@ -20,7 +20,7 @@ outputDir=Dokumente
 dryRun=False
 
 # Wenn mehrere Dateien den gleichen Namen haben, wird zuerst versucht, das Datum an den Dateinamen anzuhängen (YYYY-MM-DD).
-# Gibt es mehrere Dokumente gleichen Namens am gleichen Tag, so wird ein Zähler angehängt (_x).
+# Gibt es mehrere Dokumente gleichen Namens am gleichen Tag, so wird ein Zähler angehängt (_x) und ggf. hochgezählt.
 # Wenn auch das aus irgendeinem Grund nicht ausreichen sollte, hat man Pech gehabt. Irgendwo ist's genug mit den Ausnahmen.
 appendIfNameExists=True
 

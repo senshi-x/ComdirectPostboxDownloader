@@ -227,10 +227,10 @@ class Main:
         table.add_column("Anzahl", style="blue b", width = 10, justify="right")
         table.add_row("Online-Dokumente gesamt", str(self.countOnlineAll))
         table.add_section()
-        table.add_row("Davon bereits heruntergeladen", str(len(self.onlineAlreadyDownloadedIndicesList)))
-        table.add_row("Davon noch nicht heruntergeladen", str(len(self.onlineNotYetDownloadedIndicesList)))
+        table.add_row("Davon ungelesen", str(len(self.onlineUnreadIndicesList)))
+        table.add_row("Davon bereits heruntergeladen", str(len(self.onlineAlreadyDownloadedIndicesList)), style="dim")
+        table.add_row("Davon noch nicht heruntergeladen", str(len(self.onlineNotYetDownloadedIndicesList)), style="dim")
         table.add_row("Davon Werbung", str(len(self.onlineAdvertismentIndicesList)), style="dim")
-        table.add_row("Davon ungelesen", str(len(self.onlineUnreadIndicesList)), style="dim")
         table.add_row("Davon archiviert", str(len(self.onlineArchivedIndicesList)), style="dim")
         if self.settings.getBoolValueForKey("downloadOnlyFilenames"):
             table.add_row("Davon in der Liste gewünschter Dateinamen", str(len(self.onlineFileNameMatchingIndicesList)), style="dim")
@@ -327,7 +327,7 @@ class Main:
 
                 # do the download
                 if bool(self.settings.getBoolValueForKey("dryRun")) or isCountRun:
-                    __printStatus(idx, document, "DOWNLOADED - dry run, so not really downloaded")
+                    __printStatus(idx, document, "HERUNTERGELADEN - Testlauf, kein tatsächlicher Download")
                     countDownloaded += 1
                     continue
 
@@ -348,7 +348,7 @@ class Main:
                             if os.path.exists(filepath): # If there's multiple per same day, we append a counter
                                 docContent = self.conn.downloadDocument(document) # Gotta load early to check if content is same
                                 if __isFileEqual(filepath, docContent):
-                                    __printStatus(idx, document, "SKIPPED - no overwrite1")
+                                    __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits heruntergeladen")
                                     countSkipped += 1
                                     self.onlineAlreadyDownloadedIndicesList.append(idx)
                                     continue
@@ -357,20 +357,20 @@ class Main:
                                     path += "_1"
                                 else:
                                     counter = int(path[-1]) + 1 # We increase the counter by 1
-                                    path += str(counter)
+                                    path = path[:-1] + str(counter)
                                 filepath = f"{path}.{suffix}"
                                 # print("New filepath" + filepath)
                                 if os.path.exists(filepath): # Enough is enough...
-                                    __printStatus(idx, document, "SKIPPED - Same day duplicate exists!")
+                                    __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits heruntergeladen")
                                     self.onlineNotYetDownloadedIndicesList.append(idx)
                                     continue
                         elif not overwrite:
-                            __printStatus(idx, document, "SKIPPED - no overwrite2")
+                            __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits heruntergeladen")
                             countSkipped += 1
                             self.onlineAlreadyDownloadedIndicesList.append(idx)
                             continue
                     elif not overwrite:
-                        __printStatus(idx, document, "SKIPPED - no overwrite3")
+                        __printStatus(idx, document, "ÜBERSPRUNGEN - appendIfNameExists ist FALSE")
                         countSkipped += 1
                         self.onlineAlreadyDownloadedIndicesList.append(idx)
                         continue
@@ -380,7 +380,7 @@ class Main:
                     f.write(docContent)
                     # shutil.copyfileobj(docContent, f)
                 os.utime(filepath, (docDate, docDate))
-                __printStatus(idx, document, "DOWNLOADED")
+                __printStatus(idx, document, "HERUNTERGELADEN")
                 countDownloaded += 1
 
             # last line, summary status:

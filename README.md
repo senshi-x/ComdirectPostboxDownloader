@@ -2,19 +2,19 @@
 
 Lädt alle PDF-Dokumente aus einer beliebigen Zeitspanne herunter.
 
-Benötigt wird Python 3.x
+Benötigt wird mindestens **Python 3.8**
 
-Das Tool muss mittels Kommandozeile gestartet und bedient werden. 
+Das Tool muss mittels Kommandozeile gestartet und bedient werden.
 Es ist zwingend erforderlich, die `settings.ini` anzulegen.
-Es werden sowohl das Photo-PushTAN- als auch Mobile-TAN-Verfahren unterstützt. 
+Es werden sowohl das Photo-PushTAN- als auch Mobile-TAN-Verfahren unterstützt.
 Das klassische PhotoTAN-Verfahren ist implementiert, aber noch nicht getestet.
 
 # Setup
 Im Verzeichnis einmalig ausführen:
-> pip install -r requirements.txt
- 
+> pip install -Ur requirements.txt
+
 oder
-> python -m pip install -r requirements.txt
+> python -m pip install -Ur requirements.txt
 
 Die `settings.ini` konfigurieren und bereitstellen (siehe Kapitel unten).
 
@@ -38,17 +38,19 @@ Die folgenden Einstellungen erlauben es, das Verhalten des Downloads zu konfigur
 - **downloadSource** = Auswahl der Datenherkunft.
 
 
-Siehe settings.ini.example als Beispieldatei.
+Siehe **settings.ini.example** als Beispieldatei.
 
 ### Outputdir
 Es können relative Pfade angegeben werden. Diese werden ausgehend vom Skriptverzeichnis aufgelöst. Z.b. Dokumente als Unterverzeichnis.
-Wird ein absoluter Pfad angegeben (z.b. *C:\\Benutzer\\Annonymus\\Dokumente\\Bank\\Comdirect\\PDFs* ), so wird dieser auch korrekt verwendet.
+Wird ein absoluter Pfad angegeben (z.b. *C:\\\\Benutzer\\\\Annonymus\\\\Dokumente\\\\Bank\\\\Comdirect\\\\PDFs* ), so wird dieser auch korrekt verwendet.
 
-Wichtig: "\" als Pfad-Trenner muss immer doppelt angegeben werden wie in obigem Beispiel!
+Wichtig: "\\" als Pfad-Trenner muss immer doppelt angegeben werden wie in obigem Beispiel!
 
 
 ## Verwendet:
-- Python 3.x
+- Python 3.8+
 - Python-Bibliotheken:
-  - Pathvalidate (für Validierung der Ausgabedateinamen)
-  - Requests (für REST-Anfragen)
+  - pathvalidate (für Validierung der Ausgabedateinamen)
+  - pillow (für PhotoTAN-Verfahren)
+  - requests (für REST-Anfragen)
+  - rich (für hübsches Terminal-UI)

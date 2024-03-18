@@ -1,22 +1,52 @@
 #!/usr/bin/env python3
 
-from ComdirectConnection import Connection
+import json
+from ComdirectConnection import Connection, Document, XOnceAuthenticationInfo
 from settings import Settings
-from pathvalidate import sanitize_filename
+from pathvalidate._filename import sanitize_filename
+from typing import Any
 from enum import Enum
+from rich.console import Console
+from rich.table import Table
+from rich.prompt import IntPrompt
+from rich.progress import (
+    BarColumn,
+    Progress,
+    TextColumn,
+    TimeRemainingColumn,
+    TaskProgressColumn
+)
 import os
-import time
-import datetime
+
+ui_width=  200
+console = Console(width=ui_width)
+
+class IntPromptDeutsch(IntPrompt):
+    validate_error_message = "[prompt.invalid]Bitte einen gültigen Wert eingeben"
+    illegal_choice_message = "[prompt.invalid.choice]Bitte eine der gültigen Optionen auswählen"
+
+
+def print(string: Any, highlight : bool| None= None):
+    console.print(string, highlight=highlight)
 
 
 class DownloadSource(Enum):
-    archivedOnly = 'archivedOnly'
-    notArchivedOnly = 'notArchivedOnly'
-    all = 'all'
+    archivedOnly = "archivedOnly"
+    notArchivedOnly = "notArchivedOnly"
+    all = "all"
 
 
 class Main:
-    def __init__(self, dirname):
+    conn: Connection
+    onlineDocumentsDict: dict[int, Document] = {}
+    onlineAdvertismentIndicesList: list[int] = []
+    onlineArchivedIndicesList: list[int] = []
+    onlineUnreadIndicesList: list[int] = []
+    onlineFileNameMatchingIndicesList: list[int] = []
+    onlineNotYetDownloadedIndicesList: list[int] = []
+    onlineAlreadyDownloadedIndicesList: list[int] = []
+
+    def __init__(self, dirname: str):
         self.dirname = dirname
         try:
             self.settings = Settings(dirname)
@@ -25,157 +55,157 @@ class Main:
             input("Press ENTER to close. Create settings.ini from the example before trying again.")
             exit(0)
 
-        self.conn = False
-
-        self.onlineDocumentsDict = {}
-        self.onlineAdvertismentIndicesList = []
-        self.onlineArchivedIndicesList = []
-        self.onlineUnreadIndicesList = []
-        self.onlineFileNameMatchingIndicesList = []
-        self.onlineNotYetDownloadedIndicesList = []
-        self.onlineAlreadyDownloadedIndicesList = []
-
         self.showMenu()
-
-    def __printFullWidth(self, printString, align="center", filler="-", width=74):
-        printString = str(printString)
-        spaces = width - len(printString)
-        if spaces % 2 == 1:
-            printString += " "
-            spaces = width - len(printString)
-
-        if align == "center":
-            filler = int(spaces / 2)
-            print(filler * "-" + printString + filler * "-")
-        elif align == "left":
-            filler = int(spaces)
-            print(printString + filler * "-")
-        elif align == "right":
-            filler = int(spaces)
-            print(filler * "-" + printString)
-
-    def __printLeftRight(self, printLeftString, printRightString, filler=".", width=74):
-        printLeftString = str(printLeftString)
-        printRightString = str(printRightString)
-        spaces = width - len(printLeftString) - len(printRightString)
-        print(printLeftString + (spaces * filler) + printRightString)
 
     def showMenu(self):
         def __print_menu():
-            self.__printFullWidth("--")
-            self.__printFullWidth(" Comdirect Documents Downloader ")
-            self.__printFullWidth(" by WGPSenshi & retiredHero ")
-            self.__printFullWidth("--")
-            onlineStatus = " online "
-            if not self.conn:
-                onlineStatus = " not online "
-            self.__printFullWidth("Current Status: " + onlineStatus, "left")
-            self.__printFullWidth("--")
-            print("1. Show Current Settings ")
-            print("2. Reload Settings From File settings.ini ")
-            print("3. Show Status Local Files (WIP) ")
-            print("4. Show Status Online Files ")
-            #            print("5. (WIP) ")
-            print("6. Start Download / Update Local Files ")
-            print("0. Exit ")
-            self.__printFullWidth("--")
+            onlineStatus = "[green]ONLINE[/green]"
+            if not hasattr(self, "conn"):
+                onlineStatus = "[red]OFFLINE[/red]"
+
+            console.clear()
+            header = Table(box=None, width= int(ui_width / 2))
+            header.add_column(justify="left", width=5)
+            header.add_column(justify="center")
+            header.add_row("", "[b]Comdirect Documents Downloader", "")
+            header.add_row("", "[dim]by [cyan]Senshi_x[/cyan] and [cyan]retiredHero[/cyan]", "")
+            header.add_row("", f"{onlineStatus}", "")
+            table = Table(width= int(ui_width / 2))
+            table.add_column("", no_wrap=True, width=3, style="blue b")
+            table.add_column("Aktion", style="cyan", ratio=999)
+            table.add_row("(1)", "Einstellungen anzeigen")
+            table.add_row("(2)", "Einstellungen neu aus Datei laden")
+            table.add_row("(3)", "Status verfügbarer Dateien anzeigen (online)")
+            table.add_row("(4)", "Verfügbare Dateien herunterladen (online)")
+            table.add_row("(0)", "Beenden")
+
+            print(header)
+            print(table)
 
         loop = True
+        val = 0
+        __print_menu()
+        # user_input = Prompt.ask("Wählen Sie eine Aktion", choices=["1", "2", "3", "4", "0"])
 
         while loop:
             __print_menu()
-            user_input = input("Choose an option [1-6] / [0]: ")
-            val = 0
-
-            try:
-                val = int(user_input)
-            except ValueError:
-                print(
-                    "No.. input is not a valid integer number! Press Enter to continue!"
-                )
-                continue
+            val = IntPromptDeutsch.ask("Wählen Sie eine Aktion", choices=["1", "2", "3", "4", "0"])
 
             if val == 1:
                 # Show Current Settings
-                self.__printFullWidth("--")
-                self.__printFullWidth(" Current Settings ")
-                self.settings.showSettings()
-                self.__printFullWidth("--")
+                tSettings = Table()
+                tSettings.add_column("Schlüssel")
+                tSettings.add_column("Wert")
+                settings = self.settings.getSettings()
+                for key in settings:
+                    value = settings[key]
+                    if key in ["clientsecret", "pwd"]:
+                        value = "******"
+                    tSettings.add_row(key, value)
+                console.print(tSettings)
             elif val == 2:
                 # Reload Settings from file
-                self.__printFullWidth("--")
-                self.__printFullWidth(" Reload Settings From File settings.ini ")
+                print("[i][cyan]Einstellungen wurden neu aus der settings.ini eingelesen.")
                 self.settings.readSettings()
-                self.__printFullWidth("--")
             elif val == 3:
-                # show status local files
-                print("-3-")
-            elif val == 4:
                 # show status online files
-                print("-4-")
                 self.__startConnection()
                 self.__loadDocuments()
                 self.__showStatusOnlineDocuments()
-            elif val == 5:
-                # -
-                print("-5-")
-            elif val == 6:
+            elif val == 4:
                 # start download of files
-                print("-6-")
                 self.__startConnection()
                 self.__loadDocuments()
                 self.__processOnlineDocuments()
             elif val == 0:
                 loop = False
-            else:
-                print("not a valid input")
 
             if not val == 0:
-                input("Press Enter to Return to Menu!")
+                console.input("[b][blue]Enter[/blue][/b] drücken, um ins Menü zurückzukehren!")
 
         return val
 
     def __startConnection(self):
         """
-            ToDo: Check if all settings are set for connection!
+        ToDo: Check if all settings are set for connection!
         """
-        if self.settings and not self.conn:
-            try:
-                self.conn = Connection(
-                    username=self.settings.getValueForKey("user"),
-                    password=self.settings.getValueForKey("pwd"),
-                    client_id=self.settings.getValueForKey("clientId"),
-                    client_secret=self.settings.getValueForKey("clientSecret"),
-                )
-                self.conn.login()
-            except Exception as err:
-                print(err)
-        else:
-            print("You are already online!")
+        if not self.settings or hasattr(self, "conn"):
+            print("Sie sind bereits angemeldet!")
+            return
+        self.conn = Connection(
+            username=self.settings.getValueForKey("user"),
+            password=self.settings.getValueForKey("pwd"),
+            client_id=self.settings.getValueForKey("clientId"),
+            client_secret=self.settings.getValueForKey("clientSecret"),
+        )
+
+        attempts = 0
+        while attempts < 3:
+            xauthinfoheaders: XOnceAuthenticationInfo = XOnceAuthenticationInfo(json.loads(self.conn.initSession().headers["x-once-authentication-info"]))
+            attempts += 1
+            tan = ""
+            if xauthinfoheaders.typ == "P_TAN_PUSH":
+                tan = ""
+                print("Sie verwenden PushTAN. Bitte nutzen Sie nun die comdirect photoTAN app auf Ihrem Smartphone, um die Zugriffsanfrage namens 'Login persönlicher Bereich' zu genehmigen.")
+                print("Bitte fahren Sie erst fort, wenn Sie dies getan haben! Nach dem fünften aufeinanderfolgenden Fehlversuch sperrt Comdirect den Zugang aus Sicherheitsgründen.")
+                console.input("Drücken Sie ENTER, nachdem Sie die PushTAN Anfrage auf Ihrem Gerät genehmigt haben.")
+            elif xauthinfoheaders.typ == "P_TAN" and hasattr(xauthinfoheaders, "challenge"):
+                from PIL import Image
+                import base64
+                import io
+                Image.open(io.BytesIO(base64.b64decode(xauthinfoheaders.challenge))).show()
+                print("Bitte führen Sie die PhotoTAN Freigabe wie gewohnt mit ihrem Lesegerät oder App durch.")
+                tan = input("Geben Sie die TAN ein: ")
+            elif xauthinfoheaders.typ == "M_TAN" and hasattr(xauthinfoheaders, "challenge"):
+                print(f"Bitte prüfen Sie Ihr Smartphone mit der Nummer {xauthinfoheaders.challenge} auf die erhaltene M-TAN")
+                tan = input("Geben Sie die TAN ein: ")
+            else:
+                print(f"Tut mir Leid, das TAN-Verfahren {xauthinfoheaders.typ} wird (noch?) nicht unterstützt.")
+                exit(1)
+            r = self.conn.getSessionTAN(xauthinfoheaders.id, tan)
+            rjson = r.json()
+            if r.status_code == 422 and rjson["code"] == "expired":
+                print("Der Zeitraum für die TAN-Freigabeanforderung ist abgelaufen. Bitte erneut versuchen.")
+            elif r.status_code == 400 and rjson["code"] == "TAN_UNGUELTIG":
+                print(rjson["messages"][0]["message"])
+            elif r.status_code != 200:
+                print(f"HTTP Status: {r.status_code} | {r.json()}")
+                if attempts > 2:
+                    print("---")
+                    print(
+                        "Es sind drei Freigabeversuche in Folge fehlgeschlagen. Bitte vergewissern Sie sich, dass Sie korrekt arbeiten. "
+                        "Sollten Sie unsicher sein, melden Sie sich einmal regulär auf der Comdirect-Webseite an, um eine Sperrung nach fünf aufeinanderfolgenden Fehlversuchen zu vermeiden."
+                    )
+                    print("---")
+                    exit(1)
+            # If successful, we trigger the secondary workflow to finish login
+            self.conn.getCDSecondary()
+            break
+        print("Login erfolgreich!")
 
     def __loadDocuments(self):
-        if not self.conn:
+        if not hasattr(self, "conn"):
             raise NameError("conn not set!")
 
         if self.onlineDocumentsDict:
             return
 
+        # Getting a single value is needed to grab pagination info
         messagesMeta = self.conn.getMessagesList(0, 1)
         x = 0
         # Process batches of 1000. Max batchsize is 1000 (API restriction)
         batchSize = 1000
         self.onlineDocumentsDict = {}
 
-        while x < messagesMeta["paging"]["matches"]:
+        while x < messagesMeta.matches:
             messagesMeta = self.conn.getMessagesList(x, batchSize)
 
-            for idx, documentMeta in enumerate(messagesMeta["values"]):
-                self.onlineDocumentsDict[x + idx] = messagesMeta["values"][idx]
+            for idx, document in enumerate(messagesMeta.documents):
+                self.onlineDocumentsDict[x + idx] = document
 
             x += batchSize
 
     def __showStatusOnlineDocuments(self):
-
         self.onlineAdvertismentIndicesList = []
         self.onlineArchivedIndicesList = []
         self.onlineFileNameMatchingIndicesList = []
@@ -192,203 +222,178 @@ class Main:
         self.__processOnlineDocuments(True)
 
         # show result:
-        self.__printFullWidth("--")
-        self.__printFullWidth(" Status Online Files  ")
-        self.__printFullWidth("--")
-        onlineStatus = " online "
-        if not self.conn:
-            onlineStatus = " not online "
-        self.__printFullWidth("Current Status: " + onlineStatus, "left")
-        self.__printFullWidth("--")
-        self.__printLeftRight(
-            "Files online all count: ", str(self.countOnlineAll), ".", 20
-        )
-        self.__printLeftRight(
-            "Files online advertisment count: ",
-            str(len(self.onlineAdvertismentIndicesList)),
-            ".",
-            20,
-        )
-        self.__printLeftRight(
-            "Files online not yet read count: ",
-            str(len(self.onlineUnreadIndicesList)),
-            ".",
-            20,
-        )
-        self.__printLeftRight(
-            "Files online in archive count: ",
-            str(len(self.onlineArchivedIndicesList)),
-            ".",
-            20,
-        )
-        self.__printLeftRight(
-            "Files online filename matches count: ",
-            str(len(self.onlineFileNameMatchingIndicesList)),
-            ".",
-            20,
-        )
-        self.__printLeftRight(
-            "Files online already downloaded count: ",
-            str(len(self.onlineAlreadyDownloadedIndicesList)),
-            ".",
-            20,
-        )
-        self.__printLeftRight(
-            "Files online not yet downloaded count: ",
-            str(len(self.onlineNotYetDownloadedIndicesList)),
-            ".",
-            20,
-        )
-        self.__printFullWidth("--")
+        table = Table(width= int(ui_width / 2))
+        table.add_column("", no_wrap=True, ratio = 999)
+        table.add_column("Anzahl", style="blue b", width = 10, justify="right")
+        table.add_row("Online-Dokumente gesamt", str(self.countOnlineAll))
+        table.add_section()
+        table.add_row("Davon ungelesen", str(len(self.onlineUnreadIndicesList)))
+        table.add_row("Davon bereits heruntergeladen", str(len(self.onlineAlreadyDownloadedIndicesList)), style="dim")
+        table.add_row("Davon noch nicht heruntergeladen", str(len(self.onlineNotYetDownloadedIndicesList)), style="dim")
+        table.add_row("Davon Werbung", str(len(self.onlineAdvertismentIndicesList)), style="dim")
+        table.add_row("Davon archiviert", str(len(self.onlineArchivedIndicesList)), style="dim")
+        if self.settings.getBoolValueForKey("downloadOnlyFilenames"):
+            table.add_row("Davon in der Liste gewünschter Dateinamen", str(len(self.onlineFileNameMatchingIndicesList)), style="dim")
+        print(table)
 
-    def __processOnlineDocuments(self, isCountRun=False):
-
+    def __processOnlineDocuments(self, isCountRun: bool = False):
         if not self.onlineDocumentsDict:
             return
 
-        menuWidth = 200
-
-        def __printStatus(idx, document, status=""):
+        def __printStatus(idx: int, document: Document, status: str = ""):
             # fill idx to 5 chars
-            idx = str(idx)
-            idx = idx.zfill(5)
-            if not isCountRun:
-                self.__printLeftRight(
-                    idx
-                    + " - "
-                    + document["dateCreation"]
-                    + " - "
-                    + document["name"]
-                    + " - "
-                    + document["mimeType"],
-                    status,
-                    ".",
-                    menuWidth,
-                )
+            if isCountRun:
+                return
+            printLeftString = f"{str(idx):>5} | [cyan]{document.dateCreation.strftime("%Y-%m-%d")}[/cyan] | {sanitize_filename(document.name)}"
+            printRightString = status
+            filler: str = " "
+            spaces = ui_width - len(printLeftString) - len(printRightString)
+            if console is Console:
+                progress.console.print(printLeftString + (spaces * filler) + printRightString, highlight=False)
+            else:
+                print(printLeftString + (spaces * filler) + printRightString, highlight=False)
 
-        overwrite = False  # Only download new files
-        useSubFolders = self.settings.getBoolValueForKey("useSubFolders")
-        outputDir = self.settings.getValueForKey("outputDir")
-        isDownloadOnlyFilename = self.settings.getBoolValueForKey(
-            "downloadOnlyFilenames"
+        def __isFileEqual(filepath : str, newdata : bytes):
+            with open(filepath, 'rb') as f:
+                data = f.read()
+                return data == newdata
+        progress = Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn( bar_width= 150 ),
+            TaskProgressColumn(),
+            TimeRemainingColumn(),
+            console = console,
+            transient=isCountRun
         )
-        downloadFilenameList = self.settings.getValueForKey(
-            "downloadOnlyFilenamesArray"
-        )
-        downloadSource = self.settings.getValueForKey(
-            "downloadSource"
-        )
+        with progress:
+            overwrite = False  # Only download new files
+            useSubFolders = self.settings.getBoolValueForKey("useSubFolders")
+            outputDir = self.settings.getValueForKey("outputDir")
+            downloadFilenameList = self.settings.getValueForKey("downloadOnlyFilenamesArray")
+            downloadSource = self.settings.getValueForKey("downloadSource")
 
-        countAll = len(self.onlineDocumentsDict)
-        countProcessed = 0
-        countSkipped = 0
-        countDownloaded = 0
+            countAll = len(self.onlineDocumentsDict)
+            countProcessed = 0
+            countSkipped = 0
+            countDownloaded = 0
 
-        # for idx in range(len(self.onlineDocumentsDict)): # documentMeta in enumerate(self.onlineDocumentsDict):
-        for idx in self.onlineDocumentsDict:
-            documentMeta = self.onlineDocumentsDict[idx]
-            docName = documentMeta["name"]
-            firstFilename = docName.split(" ", 1)[0]
-            docMimeType = documentMeta["mimeType"]
-            docCreateDate = documentMeta["dateCreation"]
-            isDocAdvertisement = (
-                True if str(documentMeta["advertisement"]).lower() == "true" else False
-            )
-            isDocArchived = (
-                True
-                if str(documentMeta["documentMetaData"]["archived"]).lower() == "true"
-                else False
-            )
-            isAlreadyRead = (
-                True
-                if str(documentMeta["documentMetaData"]["alreadyRead"]).lower()
-                == "true"
-                else False
-            )
+            task =progress.add_task("Downloading...",total=countAll)
+            # for idx in range(len(self.onlineDocumentsDict)): # documentMeta in enumerate(self.onlineDocumentsDict):
+            for idx in self.onlineDocumentsDict:
+                progress.advance(task)
+                document = self.onlineDocumentsDict[idx]
+                firstFilename = document.name.split(" ", 1)[0]
+                subFolder = ""
+                myOutputDir = outputDir
+                countProcessed += 1
 
-            subFolder = ""
-            myOutputDir = outputDir
-            countProcessed += 1
+                # counting
+                if document.advertisement:
+                    self.onlineAdvertismentIndicesList.append(idx)
+                if document.documentMetadata.archived:
+                    self.onlineArchivedIndicesList.append(idx)
+                if firstFilename in downloadFilenameList:
+                    self.onlineFileNameMatchingIndicesList.append(idx)
+                if not document.documentMetadata.alreadyRead:
+                    self.onlineUnreadIndicesList.append(idx)
 
-            # counting
-            if isDocAdvertisement:
-                self.onlineAdvertismentIndicesList.append(idx)
-
-            if isDocArchived:
-                self.onlineArchivedIndicesList.append(idx)
-
-            if firstFilename in downloadFilenameList:
-                self.onlineFileNameMatchingIndicesList.append(idx)
-
-            if not isAlreadyRead:
-                self.onlineUnreadIndicesList.append(idx)
-
-            # check for setting "download source"
-            if downloadSource == DownloadSource.archivedOnly.value and not isDocArchived or\
-                    downloadSource == DownloadSource.notArchivedOnly.value and isDocArchived:
-                __printStatus(idx, documentMeta, "SKIPPED - not in selected download source")
-                countSkipped += 1
-                continue
-
-            # check for setting "only download if filename is in filename list"
-            if isDownloadOnlyFilename and not firstFilename in downloadFilenameList:
-                __printStatus(
-                    idx, documentMeta, "SKIPPED - filename not in filename list"
-                )
-                countSkipped += 1
-                continue
-
-            if docMimeType == "application/pdf":
-                subFolder = firstFilename
-                docName += ".pdf"
-            elif docMimeType == "text/html":
-                docName += ".html"
-                subFolder = "html"
-
-            if useSubFolders:
-                myOutputDir = os.path.join(outputDir, sanitize_filename(subFolder))
-                if not os.path.exists(myOutputDir):
-                    os.makedirs(myOutputDir)
-
-            filepath = os.path.join(myOutputDir, sanitize_filename(docName))
-
-            # check if already downloaded
-            if os.path.exists(filepath):
-                self.onlineAlreadyDownloadedIndicesList.append(idx)
-                if not overwrite:
-                    __printStatus(idx, documentMeta, "SKIPPED - no overwrite")
+                # check for setting "download source"
+                if downloadSource == DownloadSource.archivedOnly.value and not document.documentMetadata.archived or downloadSource == DownloadSource.notArchivedOnly.value and document.documentMetadata.archived:
+                    __printStatus(idx, document, "SKIPPED - not in selected download source")
                     countSkipped += 1
                     continue
-            else:
-                self.onlineNotYetDownloadedIndicesList.append(idx)
 
-            # do the download
-            if not bool(self.settings.getBoolValueForKey("dryRun")) and not isCountRun:
-                docContent = self.conn.downloadMessage(documentMeta)
-                moddate = time.mktime(
-                    datetime.datetime.strptime(docCreateDate, "%Y-%m-%d").timetuple()
-                )
+                # check for setting "only download if filename is in filename list"
+                if self.settings.getBoolValueForKey("downloadOnlyFilenames") and not firstFilename in downloadFilenameList:
+                    __printStatus(idx, document, "SKIPPED - filename not in filename list")
+                    countSkipped += 1
+                    continue
+                filename = document.name
+                if document.mimeType == "application/pdf":
+                    subFolder = "pdf"
+                    filename += ".pdf"
+                elif document.mimeType == "text/html":
+                    subFolder = "html"
+                    filename += ".html"
+                else:
+                    __printStatus(idx, document, f"Unknown mimeType {document.mimeType}")
+
+                if useSubFolders:
+                    myOutputDir : str = os.path.join(outputDir, sanitize_filename(subFolder))
+                    if not os.path.exists(myOutputDir):
+                        os.makedirs(myOutputDir)
+
+                filepath = os.path.join(myOutputDir, sanitize_filename(filename))
+
+                # do the download
+                if bool(self.settings.getBoolValueForKey("dryRun")) or isCountRun:
+                    __printStatus(idx, document, "HERUNTERGELADEN - Testlauf, kein tatsächlicher Download")
+                    countDownloaded += 1
+                    continue
+
+                docDate = document.dateCreation.timestamp()
+                docContent = None
+
+                # check if already downloaded
+                if os.path.exists(filepath):
+                    if (self.settings.getBoolValueForKey("appendIfNameExists")):
+                        if (docDate!= os.path.getmtime(filepath)): # If not the same, we simply append the date
+                            # print(document.name)
+                            # print(f"{docDate} {document.dateCreation.strftime("%Y-%m-%d")}")
+                            # print(filepath)
+                            # print(f"{os.path.getmtime(filepath)} {datetime.fromtimestamp(os.path.getmtime(filepath)).strftime("%Y-%m-%d")}")
+                            path, suffix = filepath.rsplit(".",1)
+                            filepath = f"{path}_{document.dateCreation.strftime("%Y-%m-%d")}.{suffix}"
+                            # print("New filepath" + filepath)
+                            if os.path.exists(filepath): # If there's multiple per same day, we append a counter
+                                docContent = self.conn.downloadDocument(document) # Gotta load early to check if content is same
+                                if __isFileEqual(filepath, docContent):
+                                    __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits heruntergeladen")
+                                    countSkipped += 1
+                                    self.onlineAlreadyDownloadedIndicesList.append(idx)
+                                    continue
+                                path, suffix = filepath.rsplit(".",1)
+                                if path[-3] == "-" and path[-1].isdigit(): # We assume this is the day split YYYY-mm-dd, so no duplicate existed yet
+                                    path += "_1"
+                                else:
+                                    counter = int(path[-1]) + 1 # We increase the counter by 1
+                                    path = path[:-1] + str(counter)
+                                filepath = f"{path}.{suffix}"
+                                # print("New filepath" + filepath)
+                                if os.path.exists(filepath): # Enough is enough...
+                                    __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits heruntergeladen")
+                                    self.onlineNotYetDownloadedIndicesList.append(idx)
+                                    continue
+                        elif not overwrite:
+                            __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits heruntergeladen")
+                            countSkipped += 1
+                            self.onlineAlreadyDownloadedIndicesList.append(idx)
+                            continue
+                    elif not overwrite:
+                        __printStatus(idx, document, "ÜBERSPRUNGEN - appendIfNameExists ist FALSE")
+                        countSkipped += 1
+                        self.onlineAlreadyDownloadedIndicesList.append(idx)
+                        continue
+                if not docContent: # Ensure data is loaded
+                    docContent = self.conn.downloadDocument(document)
                 with open(filepath, "wb") as f:
                     f.write(docContent)
                     # shutil.copyfileobj(docContent, f)
-                os.utime(filepath, (moddate, moddate))
-                __printStatus(idx, documentMeta, "DOWNLOADED")
-                countDownloaded += 1
-            else:
-                __printStatus(
-                    idx, documentMeta, "DOWNLOADED - dry run, so not really downloaded"
-                )
+                os.utime(filepath, (docDate, docDate))
+                __printStatus(idx, document, "HERUNTERGELADEN")
                 countDownloaded += 1
 
-        # last line, summary status:
-        if not isCountRun:
-            menuWidth = 74
-            self.__printFullWidth("--", "center", "-", menuWidth)
-            self.__printFullWidth("Status Files Downloading", "left", "-", menuWidth)
-            print("All: " + str(countAll) + " files")
-            print("Processed: " + str(countProcessed) + " files")
-            print("Downloaded: " + str(countDownloaded) + " files")
-            print("Skipped: " + str(countSkipped) + " files")
+            # last line, summary status:
+            if not isCountRun:
+                table = Table(width= int(ui_width / 2))
+                table.add_column("Zusammenfassung", no_wrap=True, ratio = 999)
+                table.add_column("Anzahl", style="blue b", width = 10, justify="right")
+                table.add_row("Dokumente gesamt", str(countAll))
+                table.add_section()
+                table.add_row("Davon verarbeitet", str(countProcessed))
+                table.add_row("Davon heruntergeladen", str(countDownloaded))
+                table.add_row("Davon übersprungen", str(countSkipped), style="dim")
+                print(table)
 
 
 dirname = os.path.dirname(__file__)

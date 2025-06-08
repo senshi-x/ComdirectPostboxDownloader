@@ -4,7 +4,7 @@ import json
 from ComdirectConnection import Connection, Document, XOnceAuthenticationInfo
 from settings import Settings
 from pathvalidate._filename import sanitize_filename
-from typing import Any
+from typing import Union, List as list, Dict as dict, Any 
 from enum import Enum
 from rich.console import Console
 from rich.table import Table
@@ -26,7 +26,7 @@ class IntPromptDeutsch(IntPrompt):
     illegal_choice_message = "[prompt.invalid.choice]Bitte eine der gültigen Optionen auswählen"
 
 
-def print(string: Any, highlight : bool| None= None):
+def print(string: Any, highlight : Union[bool, None]= None):
     console.print(string, highlight=highlight)
 
 

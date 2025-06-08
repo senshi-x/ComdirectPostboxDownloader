@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Union, Dict as dict, List as list, Any
 import requests
 import json
 import secrets
@@ -25,7 +25,7 @@ class XOnceAuthenticationInfo:
 
 class DocumentMeta:
     archived: bool
-    dateRead: datetime | None
+    dateRead: Union[datetime, None]
     alreadyRead: bool
     predocumentExists: bool
 

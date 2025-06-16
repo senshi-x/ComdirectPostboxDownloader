@@ -23,17 +23,17 @@ downloadOnlyFilenamesArray={"Finanzreport", "Jahressteuerbescheinigung", "Wertpa
 #[archivedOnly/notArchivedOnly/all] Auswahl der Quelle. Hier kann eingestellt werden, ob nur im Postfach als "archiviert" markierte Dokumente heruntergeladen werden sollen.
 downloadSource=all
 
-[USER_RAFAL]
-user=Zugangsnummer
+[USER_MAX.MUSTERMANN]
+user=MAX.Zugangsnummer
 pwd=PIN
-clientId=clientIdJohn
-clientSecret=clientSecretJohn
+clientId=clientIdMAX
+clientSecret=clientSecretMAX
 
-[USER_KATJA]
-user=Zugangsnummer
+[USER_ERIKA.MUSTERFRAU]
+user=ERIKA.Zugangsnummer
 pwd=PIN
-clientId=clientIdJane
-clientSecret=clientSecretJane
+clientId=clientIdERIKA
+clientSecret=clientSecretERIKA
 
 # Du kannst beliebig viele [USER_NAME]-Abschnitte hinzufügen.
 # Die Namen der Abschnitte sollten mit "USER_" beginnen, um sie leicht identifizieren zu können.

@@ -17,6 +17,7 @@ from rich.progress import (
     TaskProgressColumn
 )
 import os
+import shutil # Für Dateivergleich
 
 ui_width=  200
 console = Console(width=ui_width)
@@ -74,7 +75,7 @@ class Main:
                 onlineStatus = "[red]OFFLINE[/red]"
 
             current_user_display = "[dim](Kein Benutzer ausgewählt)[/dim]"
-            if self.current_user_profile:
+            if self.current_user_profile and 'user' in self.current_user_profile:
                 current_user_display = f"[bold green]{self.current_user_profile['user']}[/bold green]"
 
             console.clear()
@@ -109,7 +110,7 @@ class Main:
                 # Verbindung zurücksetzen, da sich Credentials geändert haben könnten
                 self.conn = None
                 self.current_user_profile = None
-                self.settings.readSettings()
+                self.settings.readSettings() # Lade Einstellungen neu
             elif val == 3:
                 # show status online files
                 self.__selectUserAndConnect() # Zuerst Benutzer auswählen und verbinden
@@ -140,15 +141,18 @@ class Main:
             self.conn = None # Stelle sicher, dass die Verbindung zurückgesetzt ist
             return
 
-        if self.conn and self.current_user_profile:
+        # Prüfe, ob bereits eine Verbindung mit einem Benutzer besteht
+        if self.conn and self.current_user_profile and 'user' in self.current_user_profile:
             print(f"[green]Bereits mit Benutzer '{self.current_user_profile['user']}' verbunden.[/green]")
             # Frage, ob die Verbindung mit diesem Benutzer fortgesetzt oder gewechselt werden soll
             choice = PromptDeutsch.ask("Möchten Sie die Verbindung mit diesem Benutzer fortsetzen oder einen anderen Benutzer auswählen?", choices=["fortsetzen", "wechseln"], default="fortsetzen")
             if choice == "fortsetzen":
-                return
+                return # Bestehende Verbindung beibehalten
             else:
                 self.conn = None # Alte Verbindung trennen
                 self.current_user_profile = None
+                self.onlineDocumentsDict = {} # Dokumente leeren, da Benutzer gewechselt wird
+
 
         console.clear()
         print("[b]Verfügbare Benutzerprofile:[/b]")
@@ -156,7 +160,6 @@ class Main:
         user_table.add_column("Nr.", style="blue b", width=5)
         user_table.add_column("Benutzername", style="cyan", ratio=999)
         for i, profile_name in enumerate(user_profiles):
-            # Zeige nur den Profilnamen, nicht die Credentials
             profile_settings = self.settings.getProfileSettings(profile_name)
             user_table.add_row(str(i + 1), profile_settings.get("user", profile_name)) # Zeige 'user' oder Profilnamen
         print(user_table)
@@ -176,6 +179,7 @@ class Main:
         """
         if not self.current_user_profile:
             print("[bold red]FEHLER:[/bold red] Kein Benutzerprofil ausgewählt.")
+            self.conn = None # Sicherstellen, dass die Verbindung im Fehlerfall None ist
             return
 
         # Wenn bereits eine Verbindung besteht und es der gleiche Benutzer ist, nichts tun
@@ -184,12 +188,18 @@ class Main:
             return
 
         print(f"Versuche Verbindung für Benutzer: [bold]{self.current_user_profile['user']}[/bold]")
-        self.conn = Connection(
-            username=self.current_user_profile["user"],
-            password=self.current_user_profile["pwd"],
-            client_id=self.current_user_profile["clientId"],
-            client_secret=self.current_user_profile["clientSecret"],
-        )
+        
+        try:
+            self.conn = Connection(
+                username=self.current_user_profile["user"],
+                password=self.current_user_profile["pwd"],
+                client_id=self.current_user_profile["clientId"],
+                client_secret=self.current_user_profile["clientSecret"],
+            )
+        except Exception as e:
+            print(f"[bold red]Fehler bei der Initialisierung der Verbindung: [/bold red]{e}")
+            self.conn = None
+            return
 
         attempts = 0
         while attempts < 3:
@@ -198,7 +208,7 @@ class Main:
                 attempts += 1
                 tan = ""
                 if xauthinfoheaders.typ == "P_TAN_PUSH":
-                    tan = ""
+                    tan = "" # PushTAN benötigt keine manuelle Eingabe
                     print("Sie verwenden PushTAN. Bitte nutzen Sie nun die comdirect photoTAN app auf Ihrem Smartphone, um die Zugriffsanfrage namens 'Login persönlicher Bereich' zu genehmigen.")
                     print("Bitte fahren Sie erst fort, wenn Sie dies getan haben! Nach dem fünften aufeinanderfolgenden Fehlversuch sperrt Comdirect den Zugang aus Sicherheitsgründen.")
                     console.input("Drücken Sie ENTER, nachdem Sie die PushTAN Anfrage auf Ihrem Gerät genehmigt haben.")
@@ -206,54 +216,63 @@ class Main:
                     from PIL import Image
                     import base64
                     import io
-                    Image.open(io.BytesIO(base64.b64decode(xauthinfoheaders.challenge))).show()
-                    print("Bitte führen Sie die PhotoTAN Freigabe wie gewohnt mit ihrem Lesegerät oder App durch.")
-                    tan = input("Geben Sie die TAN ein: ")
+                    # PhotoTAN Challenge anzeigen
+                    img_data = base64.b64decode(xauthinfoheaders.challenge)
+                    img = Image.open(io.BytesIO(img_data))
+                    # Versuche, das Bild anzuzeigen (kann vom System abhängen)
+                    try:
+                        img.show()
+                        print("Bitte führen Sie die PhotoTAN Freigabe wie gewohnt mit ihrem Lesegerät oder App durch.")
+                    except Exception:
+                        print("Konnte PhotoTAN-Bild nicht automatisch anzeigen. Bitte prüfen Sie die Konsole oder versuchen Sie es manuell.")
+                        # Falls Bild nicht angezeigt werden kann, könnte hier ein Pfad zum Speichern angeboten werden
+                    tan = PromptDeutsch.ask("Geben Sie die TAN ein")
                 elif xauthinfoheaders.typ == "M_TAN" and hasattr(xauthinfoheaders, "challenge"):
                     print(f"Bitte prüfen Sie Ihr Smartphone mit der Nummer {xauthinfoheaders.challenge} auf die erhaltene M-TAN")
-                    tan = input("Geben Sie die TAN ein: ")
+                    tan = PromptDeutsch.ask("Geben Sie die TAN ein")
                 else:
-                    print(f"Tut mir Leid, das TAN-Verfahren {xauthinfoheaders.typ} wird (noch?) nicht unterstützt.")
-                    self.conn = None # Verbindung bei nicht unterstützter TAN-Methode zurücksetzen
+                    print(f"Tut mir Leid, das TAN-Verfahren [bold red]{xauthinfoheaders.typ}[/bold red] wird (noch?) nicht unterstützt.")
+                    self.conn = None
                     return # Verbindung fehlgeschlagen, zurück zum Menü
                 
                 r = self.conn.getSessionTAN(xauthinfoheaders.id, tan)
                 rjson = r.json()
-                if r.status_code == 422 and rjson["code"] == "expired":
-                    print("Der Zeitraum für die TAN-Freigabeanforderung ist abgelaufen. Bitte erneut versuchen.")
-                elif r.status_code == 400 and rjson["code"] == "TAN_UNGUELTIG":
-                    print(rjson["messages"][0]["message"])
+                if r.status_code == 422 and rjson.get("code") == "expired":
+                    print("[bold yellow]Der Zeitraum für die TAN-Freigabeanforderung ist abgelaufen. Bitte erneut versuchen.[/bold yellow]")
+                elif r.status_code == 400 and rjson.get("code") == "TAN_UNGUELTIG":
+                    print(f"[bold yellow]{rjson['messages'][0]['message']}[/bold yellow]")
                 elif r.status_code != 200:
-                    print(f"HTTP Status: {r.status_code} | {r.json()}")
-                    if attempts > 2:
+                    print(f"[bold red]HTTP Status:[/bold red] {r.status_code} | {r.json()}")
+                    if attempts >= 3: # Nach 3 Fehlversuchen
                         print("---")
                         print(
-                            "Es sind drei Freigabeversuche in Folge fehlgeschlagen. Bitte vergewissern Sie sich, dass Sie korrekt arbeiten. "
-                            "Sollten Sie unsicher sein, melden Sie sich einmal regulär auf der Comdirect-Webseite an, um eine Sperrung nach fünf aufeinanderfolgenden Fehlversuchen zu vermeiden."
+                            "[bold red]Es sind drei Freigabeversuche in Folge fehlgeschlagen. Bitte vergewissern Sie sich, dass Sie korrekt arbeiten. "
+                            "Sollten Sie unsicher sein, melden Sie sich einmal regulär auf der Comdirect-Webseite an, um eine Sperrung nach fünf aufeinanderfolgenden Fehlversuchen zu vermeiden.[/bold red]"
                         )
                         print("---")
-                        self.conn = None # Verbindung bei zu vielen Fehlversuchen zurücksetzen
-                        return # Verbindung fehlgeschlagen, zurück zum Menü
-                
-                # Wenn erfolgreich, den Secondary Workflow abschließen
-                self.conn.getCDSecondary()
-                print("Login erfolgreich!")
-                return # Verbindung erfolgreich hergestellt
+                        self.conn = None
+                        return
+                else: # 200 OK
+                    # Wenn erfolgreich, den Secondary Workflow abschließen
+                    self.conn.getCDSecondary()
+                    print("[green]Login erfolgreich![/green]")
+                    return # Verbindung erfolgreich hergestellt
             
             except Exception as e:
-                print(f"[bold red]Fehler bei der Verbindung:[/bold red] {e}")
-                if attempts > 2:
+                print(f"[bold red]Fehler bei der Verbindung oder TAN-Challenge:[/bold red] {e}")
+                if attempts >= 3: # Nach 3 Fehlversuchen
                     print("[bold red]Maximale Anzahl von Verbindungsversuchen erreicht.[/bold red]")
                     self.conn = None
-                    return # Verbindung fehlgeschlagen, zurück zum Menü
+                    return
 
         print("[bold red]Verbindung konnte nicht hergestellt werden.[/bold red]")
-        self.conn = None # Sicherstellen, dass die Verbindung im Fehlerfall None ist
+        self.conn = None
 
 
     def __loadDocuments(self):
         if not self.conn:
             print("[bold red]FEHLER:[/bold red] Keine aktive Verbindung. Bitte zuerst anmelden.")
+            self.onlineDocumentsDict = {} # Sicherstellen, dass die Liste leer ist
             return
 
         if self.onlineDocumentsDict:
@@ -262,14 +281,13 @@ class Main:
 
         print("[green]Lade Dokumentenliste von Comdirect...[/green]")
         try:
-            # Getting a single value is needed to grab pagination info
-            messagesMeta = self.conn.getMessagesList(0, 1)
-            x = 0
-            # Process batches of 1000. Max batchsize is 1000 (API restriction)
-            batchSize = 1000
-            self.onlineDocumentsDict = {}
-
+            messagesMeta = self.conn.getMessagesList(0, 1) # Nur um Gesamtanzahl zu bekommen
             total_documents = messagesMeta.matches
+            
+            self.onlineDocumentsDict = {}
+            batchSize = 1000 # Max batchsize is 1000 (API restriction)
+            x = 0
+
             with Progress(
                 TextColumn("[progress.description]{task.description}"),
                 BarColumn(),
@@ -279,12 +297,13 @@ class Main:
             ) as progress:
                 task = progress.add_task(f"[cyan]Lade Dokumente ({total_documents} gesamt)...[/cyan]", total=total_documents)
                 
-                while x < messagesMeta.matches:
+                while x < total_documents:
                     current_batch = self.conn.getMessagesList(x, batchSize)
                     for idx, document in enumerate(current_batch.documents):
+                        # Nutze den originalen Index relativ zur Gesamtliste
                         self.onlineDocumentsDict[x + idx] = document
-                    x += batchSize
-                    progress.update(task, completed=x if x <= total_documents else total_documents)
+                    x += len(current_batch.documents) # Nutze die tatsächliche Anzahl der zurückgegebenen Dokumente
+                    progress.update(task, completed=x)
             
             print(f"[green]Dokumentenliste erfolgreich geladen. {len(self.onlineDocumentsDict)} Dokumente gefunden.[/green]")
 
@@ -298,6 +317,7 @@ class Main:
             print("[yellow]Keine Dokumente geladen. Bitte zuerst Dokumente laden (Option 3 oder 4).[/yellow]")
             return
 
+        # Listen zurücksetzen vor der neuen Zählung
         self.onlineAdvertismentIndicesList = []
         self.onlineArchivedIndicesList = []
         self.onlineFileNameMatchingIndicesList = []
@@ -322,9 +342,6 @@ class Main:
         table.add_row("Davon Werbung", str(len(self.onlineAdvertismentIndicesList)), style="dim")
         table.add_row("Davon archiviert", str(len(self.onlineArchivedIndicesList)), style="dim")
         
-        # Achtung: hier wird immer noch die DEFAULT Einstellung abgerufen. Das ist korrekt,
-        # da downloadOnlyFilenames eine globale Einstellung ist, kein user-spezifischer Filter.
-        # Wenn downloadOnlyFilenamesArray user-spezifisch sein soll, muss es in user_profiles verschoben werden.
         if self.settings.getBoolValueForKey("downloadOnlyFilenames"):
             table.add_row("Davon in der Liste gewünschter Dateinamen", str(len(self.onlineFileNameMatchingIndicesList)), style="dim")
         print(table)
@@ -339,9 +356,9 @@ class Main:
 
 
         def __printStatus(idx: int, document: Document, status: str = ""):
-            # fill idx to 5 chars
             if isCountRun:
                 return
+            # Stringformatierung für die Ausgabe
             printLeftString = f"{str(idx):>5} | [cyan]{document.dateCreation.strftime('%Y-%m-%d')}[/cyan] | {sanitize_filename(document.name)}"
             printRightString = status
             filler: str = " "
@@ -350,6 +367,8 @@ class Main:
             progress.console.print(printLeftString + (spaces * filler) + printRightString, highlight=False)
 
         def __isFileEqual(filepath : str, newdata : bytes):
+            if not os.path.exists(filepath):
+                return False
             with open(filepath, 'rb') as f:
                 data = f.read()
                 return data == newdata
@@ -364,11 +383,10 @@ class Main:
             transient=isCountRun # Fortschrittsbalken verschwindet nach Abschluss im Zählmodus
         )
         with progress:
-            # Einstellungen, die hier genutzt werden, sind globale Einstellungen aus DEFAULT
             overwrite = False  # Bleibt auf False, da appendIfNameExists die Strategie ist
             useSubFolders = self.settings.getBoolValueForKey("useSubFolders")
             outputDir = self.settings.getValueForKey("outputDir")
-            downloadFilenameList = self.settings.getValueForKey("downloadOnlyFilenamesArray")
+            downloadFilenameList = self.settings.getValueForKey("downloadOnlyFilenamesArray") # Dies ist nun eine geparste Liste
             downloadSource = self.settings.getValueForKey("downloadSource")
             appendIfNameExists = self.settings.getBoolValueForKey("appendIfNameExists")
 
@@ -383,7 +401,8 @@ class Main:
             for idx in self.onlineDocumentsDict:
                 progress.advance(task)
                 document = self.onlineDocumentsDict[idx]
-                firstFilename = document.name.split(" ", 1)[0]
+                # Sicherstellen, dass document.name ein String ist, bevor split aufgerufen wird
+                firstFilename = str(document.name).split(" ", 1)[0]
                 subFolder = ""
                 myOutputDir = outputDir
                 countProcessed += 1
@@ -393,6 +412,7 @@ class Main:
                     self.onlineAdvertismentIndicesList.append(idx)
                 if document.documentMetadata.archived:
                     self.onlineArchivedIndicesList.append(idx)
+                # downloadFilenameList ist jetzt ein Python-Array (Liste/Set)
                 if firstFilename in downloadFilenameList:
                     self.onlineFileNameMatchingIndicesList.append(idx)
                 if not document.documentMetadata.alreadyRead:
@@ -423,11 +443,10 @@ class Main:
                     subFolder = "html"
                     file_extension = ".html"
                 else:
-                    # Wenn unbekannter MIME-Typ und nicht im Zählmodus, dann springe über
                     if not isCountRun:
                         __printStatus(idx, document, f"ÜBERSPRUNGEN - Unbekannter MIME-Typ {document.mimeType}")
                         countSkipped += 1
-                    continue # Überspringe diesen Dokumenttyp im Zählmodus und im Download-Modus
+                    continue
 
                 filename = filename_base + file_extension
 
@@ -441,29 +460,29 @@ class Main:
                 # If it's just a count run, we only populate lists and don't download
                 if isCountRun:
                     if os.path.exists(filepath):
-                        # Im Zählmodus ist es nur eine Annahme, ob die Datei existiert
                         self.onlineAlreadyDownloadedIndicesList.append(idx)
                     else:
                         self.onlineNotYetDownloadedIndicesList.append(idx)
-                    continue # Beende die Iteration für den Zählmodus hier
+                    continue
 
                 # ---- Ab hier beginnt der tatsächliche Download-Prozess (nicht im isCountRun-Modus) ----
                 
                 # Dry Run Check
                 if self.settings.getBoolValueForKey("dryRun"):
                     __printStatus(idx, document, "SIMULIERT - Testlauf, kein tatsächlicher Download")
-                    countDownloaded += 1 # Als "heruntergeladen" zählen im Dry Run
+                    countDownloaded += 1
                     continue
 
                 docDate = document.dateCreation.timestamp()
-                docContent = None # Muss hier initialisiert werden
+                docContent = None
 
-                # Check if already downloaded and handle `appendIfNameExists`
                 final_filepath = filepath
+                
+                # Prüfe, ob die Datei existiert und ob appendIfNameExists aktiv ist
                 if os.path.exists(filepath):
                     if appendIfNameExists:
-                        # Lade den Inhalt frühzeitig, um Dateigleichheit zu prüfen
                         try:
+                            # Lade Inhalt, um Dateigleichheit zu prüfen, bevor wir umbenennen
                             docContent = self.conn.downloadDocument(document)
                         except Exception as e:
                             __printStatus(idx, document, f"FEHLER beim Download für Vergleich: {e}")
@@ -474,92 +493,42 @@ class Main:
                             __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits existiert (Inhalt gleich)")
                             countSkipped += 1
                             self.onlineAlreadyDownloadedIndicesList.append(idx)
-                            continue # Überspringe, da identisch
+                            continue
 
-                        # Inhalt ist ungleich oder Datum ungleich, versuche Umbenennung
-                        path_without_ext, suffix = filepath.rsplit(".", 1)
+                        # Inhalt ist ungleich, versuche Umbenennung mit Datum
+                        path_without_ext, suffix = os.path.splitext(filepath)
                         new_path_base = f"{path_without_ext}_{document.dateCreation.strftime('%Y-%m-%d')}"
-                        final_filepath = f"{new_path_base}.{suffix}"
+                        final_filepath = f"{new_path_base}{suffix}"
                         
                         counter = 1
                         while os.path.exists(final_filepath):
-                            if docContent and __isFileEqual(final_filepath, docContent):
+                            if __isFileEqual(final_filepath, docContent):
                                 __printStatus(idx, document, "ÜBERSPRUNGEN - Datei existiert bereits (Inhalt gleich)")
                                 countSkipped += 1
                                 self.onlineAlreadyDownloadedIndicesList.append(idx)
-                                break # Breche innere Schleife ab, da Datei existiert und identisch ist
+                                break # Breche innere Schleife ab
                             
                             counter += 1
-                            final_filepath = f"{new_path_base}_{counter}.{suffix}"
-                        else: # Only runs if the while loop completes without a break
-                            if os.path.exists(final_filepath) and docContent and __isFileEqual(final_filepath, docContent):
-                                # Doppelte Prüfung, falls der letzte Loop-Check fehlschlägt, aber Datei doch existiert und gleich ist
-                                __printStatus(idx, document, "ÜBERSPRUNGEN - Datei existiert bereits (Inhalt gleich)")
-                                countSkipped += 1
-                                self.onlineAlreadyDownloadedIndicesList.append(idx)
-                                continue
-                            
-                            # Wenn wir hier ankommen, haben wir einen eindeutigen Pfad gefunden oder die Datei existiert nicht
-                            if not docContent: # Falls noch nicht geladen für Vergleich
-                                try:
-                                    docContent = self.conn.downloadDocument(document)
-                                except Exception as e:
-                                    __printStatus(idx, document, f"FEHLER beim Download: {e}")
-                                    countSkipped += 1
-                                    continue
-                            
-                            with open(final_filepath, "wb") as f:
-                                f.write(docContent)
-                            os.utime(final_filepath, (docDate, docDate))
-                            __printStatus(idx, document, f"HERUNTERGELADEN (umbenannt zu {os.path.basename(final_filepath)})")
-                            countDownloaded += 1
-                            continue # Gehe zum nächsten Dokument
+                            final_filepath = f"{new_path_base}_{counter}{suffix}"
+                        else: # nur wenn die while-Schleife normal durchläuft (d.h. kein break)
+                             if os.path.exists(final_filepath) and __isFileEqual(final_filepath, docContent):
+                                 __printStatus(idx, document, "ÜBERSPRUNGEN - Datei existiert bereits (Inhalt gleich)")
+                                 countSkipped += 1
+                                 self.onlineAlreadyDownloadedIndicesList.append(idx)
+                                 continue
                         
-                        if counter > 1 and os.path.exists(final_filepath) and docContent and __isFileEqual(final_filepath, docContent):
-                             # Dies fängt den Fall ab, dass die äußere Schleife durchlaufen wurde
-                             # und wir bereits einen Treffer hatten (break in innerer while-Schleife)
+                        if os.path.exists(final_filepath) and __isFileEqual(final_filepath, docContent):
+                            # Dieser Fall tritt ein, wenn die innere while-Schleife gebrochen wurde
+                            # weil eine identische Datei gefunden wurde.
                             continue
-                        elif os.path.exists(final_filepath):
-                            # Wenn wir hier ankommen und die Datei immer noch existiert und nicht identisch ist, überspringen wir
-                            __printStatus(idx, document, "ÜBERSPRUNGEN - Datei existiert bereits und konnte nicht eindeutig gespeichert werden")
-                            countSkipped += 1
-                            self.onlineNotYetDownloadedIndicesList.append(idx) # zählt als nicht heruntergeladen
-                            continue
-                            
 
-                    else: # appendIfNameExists ist False und Datei existiert bereits, überspringe
+                        # Wenn wir hier ankommen, haben wir entweder einen eindeutigen Pfad gefunden
+                        # oder die Originaldatei existiert, ist aber nicht identisch und es muss umbenannt werden.
+                        
+                    else: # appendIfNameExists ist False und Datei existiert bereits
                         __printStatus(idx, document, "ÜBERSPRUNGEN - Datei existiert bereits (Überschreiben deaktiviert)")
                         countSkipped += 1
                         self.onlineAlreadyDownloadedIndicesList.append(idx)
                         continue
                 
-                # Wenn wir hier ankommen, muss die Datei heruntergeladen werden
-                if not docContent: # Falls noch nicht für Vergleich geladen
-                    try:
-                        docContent = self.conn.downloadDocument(document)
-                    except Exception as e:
-                        __printStatus(idx, document, f"FEHLER beim Download: {e}")
-                        countSkipped += 1
-                        continue
-
-                with open(final_filepath, "wb") as f:
-                    f.write(docContent)
-                os.utime(final_filepath, (docDate, docDate))
-                __printStatus(idx, document, "HERUNTERGELADEN")
-                countDownloaded += 1
-
-            # last line, summary status:
-            if not isCountRun:
-                table = Table(width= int(ui_width / 2))
-                table.add_column("Zusammenfassung", no_wrap=True, ratio = 999)
-                table.add_column("Anzahl", style="blue b", width = 10, justify="right")
-                table.add_row("Dokumente gesamt", str(countAll))
-                table.add_section()
-                table.add_row("Davon verarbeitet", str(countProcessed))
-                table.add_row("Davon heruntergeladen", str(countDownloaded))
-                table.add_row("Davon übersprungen", str(countSkipped), style="dim")
-                print(table)
-
-
-dirname = os.path.dirname(__file__)
-main = Main(dirname)
+                # Wenn wir hier ankommen, muss die Datei heruntergeladen und

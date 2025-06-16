@@ -28,7 +28,9 @@ class Settings:
                 self.user_profiles[profile_name] = {}
                 try:
                     for key in ["user", "pwd", "clientId", "clientSecret"]:
-                        if not self.__config.has_option(section, key) or not self.__config[section][key]:
+                        # Lese aus der config, falls vorhanden, sonst interaktive Abfrage
+                        value = self.__config[section].get(key)
+                        if not value:
                             if key == "pwd":
                                 self.user_profiles[profile_name][key] = getpass.getpass(prompt=f"Bitte geben Sie das Passwort für Benutzer '{profile_name}' ein: ", stream=None)
                             elif key == "clientSecret":
@@ -36,13 +38,12 @@ class Settings:
                             else:
                                 self.user_profiles[profile_name][key] = self.__getInputForString(f"Bitte geben Sie die {key} für Benutzer '{profile_name}' ein: ")
                         else:
-                            self.user_profiles[profile_name][key] = self.__config[section][key]
+                            self.user_profiles[profile_name][key] = value
                 except Exception as error:
                     print(f"ERROR beim Laden des Benutzerprofils '{profile_name}': {error}")
                     exit(-1)
 
         # Überprüfe und setze die globalen Einstellungen (die im DEFAULT-Abschnitt stehen)
-        # Stellen Sie sicher, dass der DEFAULT-Abschnitt existiert
         if "DEFAULT" not in self.__config:
             self.__config["DEFAULT"] = {}
 
@@ -51,32 +52,32 @@ class Settings:
             outputDir = self.__config["DEFAULT"].get("outputDir")
             if not outputDir:
                 outputDir = self.__getInputForString("Bitte geben Sie das Zielverzeichnis an, in welches die Dokumente heruntergeladen werden sollen: ")
-                self.__config["DEFAULT"]["outputDir"] = outputDir # Hier wird es als String gespeichert
+                self.__config["DEFAULT"]["outputDir"] = outputDir
             self.outputDir = self.__createIfNotExistDir(outputDir)
 
             # Dry Run
             dryRun_val = self.__config["DEFAULT"].get("dryRun")
             if not dryRun_val:
                 dryRun_val = self.__getInputForString("Soll dies ein Testlauf sein (keine Dateien werden heruntergeladen)? [ja/nein]: ")
-            self.__config["DEFAULT"]["dryRun"] = str(self.__isTruthy(dryRun_val)) # Als String speichern
+            self.__config["DEFAULT"]["dryRun"] = str(self.__isTruthy(dryRun_val))
 
             # Append If Name Exists
             appendIfNameExists_val = self.__config["DEFAULT"].get("appendIfNameExists")
             if not appendIfNameExists_val:
                  appendIfNameExists_val = self.__getInputForString("Wenn gleiche Dateinamen existieren, sollen Datum/Zähler angehängt werden? [ja/nein]: ")
-            self.__config["DEFAULT"]["appendIfNameExists"] = str(self.__isTruthy(appendIfNameExists_val)) # Als String speichern
+            self.__config["DEFAULT"]["appendIfNameExists"] = str(self.__isTruthy(appendIfNameExists_val))
 
             # Use SubFolders
             useSubFolders_val = self.__config["DEFAULT"].get("useSubFolders")
             if not useSubFolders_val:
                 useSubFolders_val = self.__getInputForString("Dokumente in Unterordner sortieren (pdf/html)? [ja/nein]: ")
-            self.__config["DEFAULT"]["useSubFolders"] = str(self.__isTruthy(useSubFolders_val)) # Als String speichern
+            self.__config["DEFAULT"]["useSubFolders"] = str(self.__isTruthy(useSubFolders_val))
 
             # Download Only Filenames
             downloadOnlyFilenames_val = self.__config["DEFAULT"].get("downloadOnlyFilenames")
             if not downloadOnlyFilenames_val:
                 downloadOnlyFilenames_val = self.__getInputForString("Nur spezifische Dateinamen herunterladen? [ja/nein]: ")
-            self.__config["DEFAULT"]["downloadOnlyFilenames"] = str(self.__isTruthy(downloadOnlyFilenames_val)) # Als String speichern
+            self.__config["DEFAULT"]["downloadOnlyFilenames"] = str(self.__isTruthy(downloadOnlyFilenames_val))
 
             # Download Only Filenames Array
             download_list_str = self.__config["DEFAULT"].get("downloadOnlyFilenamesArray", "[]")
@@ -85,29 +86,32 @@ class Settings:
                 self._download_filenames_array_parsed = json.loads(download_list_str.replace("'", '"')) if download_list_str else []
             except json.JSONDecodeError:
                 # Fallback, wenn es kein gültiges JSON ist (z.B. altes Format {"Item1", "Item2"})
-                # Hier parsen wir es als Set, aber speichern es als String zurück in __config
-                self._download_filenames_array_parsed = {item.strip() for item in download_list_str.strip('{} ').split(',') if item.strip()}
+                # Hier parsen wir es als Set. Wichtig: convertiere es zurück in eine Liste für Konsistenz
+                self._download_filenames_array_parsed = list({item.strip() for item in download_list_str.strip('{} ').split(',') if item.strip()})
             
-            # WICHTIG: Speichere es als String zurück in __config, wenn es geändert wurde oder interaktiv eingegeben wurde
-            # Dies ist der Grund für den Fehler "option values must be strings"
-            if not download_list_str: # wenn es leer war und interaktiv gesetzt wurde
-                self.__config["DEFAULT"]["downloadOnlyFilenamesArray"] = json.dumps(list(self._download_filenames_array_parsed))
-            # Wenn es bereits in der config war, lassen wir es als String, wie es ist.
+            # WICHTIG: Wenn es interaktiv abgefragt wurde (also download_list_str leer war)
+            # oder wenn das Format sich geändert hat, speichern wir es als gültigen JSON-String zurück
+            # in der __config, um den "option values must be strings"-Fehler zu vermeiden.
+            # Wenn es bereits korrekt als JSON-String vorhanden war, ändert sich nichts.
+            # Die Einstellung muss für die Anzeige und für getValueForKey immer noch richtig geparst sein.
+            if not download_list_str or not isinstance(self._download_filenames_array_parsed, list): # Wenn es leer war oder nicht als Liste geparst wurde
+                self.__config["DEFAULT"]["downloadOnlyFilenamesArray"] = json.dumps(self._download_filenames_array_parsed)
+
 
             # Download Source
             downloadSource_val = self.__config["DEFAULT"].get("downloadSource")
             if not downloadSource_val:
                 downloadSource_val = self.__getInputForString("Download-Quelle (archivedOnly/notArchivedOnly/all): ")
-            self.__config["DEFAULT"]["downloadSource"] = downloadSource_val # Als String speichern
+            self.__config["DEFAULT"]["downloadSource"] = downloadSource_val
 
 
         except Exception as error:
+            # Jetzt, da alle Werte in self.__config als String gespeichert werden sollten,
+            # tritt dieser Fehler hier hoffentlich nicht mehr auf.
             print(f"ERROR beim Laden der globalen Einstellungen: {error}")
             exit(-1)
 
     def getSettings(self):
-        # Diese Methode gibt das config-Objekt zurück.
-        # Für spezielle Werte wie downloadOnlyFilenamesArray sollte getValueForKey verwendet werden.
         return self.__config["DEFAULT"]
 
     def getProfileNames(self) -> list[str]:
@@ -122,15 +126,17 @@ class Settings:
         print("\n[b]Globale Einstellungen[/b]")
         # Erstelle eine temporäre Sektion, um nur die DEFAULT-Werte anzuzeigen
         temp_config = configparser.ConfigParser()
-        temp_config["DEFAULT"] = self.__config["DEFAULT"] # Kopiere den DEFAULT-Abschnitt
-
-        for key in temp_config["DEFAULT"]:
-            output = f"{key}: "
-            if key == "downloadOnlyFilenamesArray":
-                # Zeige den geparsten Wert für downloadOnlyFilenamesArray
-                output += str(self._download_filenames_array_parsed)
+        # Kopiere nur die relevanten Werte in ein Dict, um sie zu übergeben.
+        # Vermeide, das configparser-Objekt direkt zu übergeben, da es die Anzeige von Listen verkompliziert.
+        default_settings_for_display = {}
+        for key, value in self.__config["DEFAULT"].items():
+            if key == "downloadonlyfilenamesarray": # configparser keys are lowercase
+                default_settings_for_display[key] = str(self._download_filenames_array_parsed)
             else:
-                output += temp_config["DEFAULT"][key]
+                default_settings_for_display[key] = value
+        
+        for key, value in default_settings_for_display.items():
+            output = f"{key}: {value}"
             self.__printMessage(output)
 
         print("\n[b]Benutzerprofile[/b]")
@@ -147,24 +153,28 @@ class Settings:
 
     def getValueForKey(self, settingName: str, section: str = "DEFAULT"):
         if section == "DEFAULT" and settingName == "downloadOnlyFilenamesArray":
-            # Gib das bereits geparste Array zurück
-            return self._download_filenames_array_parsed
+            return self._download_filenames_array_parsed # Gibt das geparste Python-Objekt zurück
         
-        if self.__config.has_option(section, settingName) and self.__config[section][settingName]:
-            return self.__config[section][settingName]
+        # configparser Keys sind immer lowercase
+        settingName_lower = settingName.lower()
+
+        if self.__config.has_option(section, settingName_lower) and self.__config[section][settingName_lower]:
+            return self.__config[section][settingName_lower]
         else:
             raise NameError(f"Einstellung '{settingName}' in Sektion '{section}' nicht gesetzt oder leer.")
 
     def getBoolValueForKey(self, settingName: str, section: str = "DEFAULT"):
-        if self.__config.has_option(section, settingName) and self.__config[section][settingName]:
-            return self.__isTruthy(self.__config[section][settingName])
+        settingName_lower = settingName.lower()
+        if self.__config.has_option(section, settingName_lower) and self.__config[section][settingName_lower]:
+            return self.__isTruthy(self.__config[section][settingName_lower])
         else:
             raise NameError(f"Einstellung '{settingName}' in Sektion '{section}' nicht gesetzt oder leer.")
 
     def __isSettingNameFilledInConfig(self, settingName: str, section: str = "DEFAULT"):
         # Diese Hilfsfunktion ist jetzt weniger relevant, da wir direkt get() verwenden
         # und die Werte immer als Strings in __config gespeichert werden.
-        return self.__config.has_option(section, settingName) and bool(self.__config[section].get(settingName))
+        # Der ConfigParser macht Keys automatisch lowercase
+        return self.__config.has_option(section, settingName.lower()) and bool(self.__config[section].get(settingName.lower()))
 
     def __getInputForString(self, printString: str):
         inp = input(printString)

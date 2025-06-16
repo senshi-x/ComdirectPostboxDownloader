@@ -1,23 +1,11 @@
 [DEFAULT]
 # NOTE: Keine Inline-Kommentare nutzen! Diese werden als Teil des Wertes interpretiert!
-# Comdirect login data
-
-# BITTE BEACHTEN:
-# Die Werte für user, pw, clientID und clientSecret sind GEHEIM und SCHÜTZENSWERT. Teile sie NIEMALS mit irgendjemanden!
-# Wird für user, pwd, clientId oder clientSecret hier kein Wert hinterlegt, so fordert das Programm bei Bedarf diese eine (sichere) Eingabe dieser.
-# Für erhöhte Sicherheit wird empfohlen, zumindest pwd und clientSecret hier NICHT zu hinterlegen und nur im Programm einzugeben.
-user=Zugangsnummer
-#pwd=PIN/Passwort
-
-# ClientID+Secret, die via API Access abrufbar ist (https://kunde.comdirect.de/itx/oauth/privatkunden)
-clientId=****
-#clientSecret=****
 
 #output directory
 outputDir=Dokumente
 
 #dryRun [True/False], bei dryRun=True wird nichts heruntergeladen; nur simuliert
-dryRun=False
+dryRun=True
 
 # Wenn mehrere Dateien den gleichen Namen haben, wird zuerst versucht, das Datum an den Dateinamen anzuhängen (YYYY-MM-DD).
 # Gibt es mehrere Dokumente gleichen Namens am gleichen Tag, so wird ein Zähler angehängt (_x) und ggf. hochgezählt.
@@ -34,3 +22,18 @@ downloadOnlyFilenamesArray={"Finanzreport", "Jahressteuerbescheinigung", "Wertpa
 
 #[archivedOnly/notArchivedOnly/all] Auswahl der Quelle. Hier kann eingestellt werden, ob nur im Postfach als "archiviert" markierte Dokumente heruntergeladen werden sollen.
 downloadSource=all
+
+[USER_RAFAL]
+user=Zugangsnummer
+pwd=PIN
+clientId=clientIdJohn
+clientSecret=clientSecretJohn
+
+[USER_KATJA]
+user=Zugangsnummer
+pwd=PIN
+clientId=clientIdJane
+clientSecret=clientSecretJane
+
+# Du kannst beliebig viele [USER_NAME]-Abschnitte hinzufügen.
+# Die Namen der Abschnitte sollten mit "USER_" beginnen, um sie leicht identifizieren zu können.

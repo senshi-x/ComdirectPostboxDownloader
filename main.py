@@ -229,13 +229,22 @@ class Main:
 
         if self.conn and self.current_user_profile and 'user' in self.current_user_profile:
             print(f"[green]Bereits mit Benutzer '{self.current_user_profile['user']}' verbunden.[/green]")
-            choice = PromptDeutsch.ask("Möchten Sie die Verbindung mit diesem Benutzer fortsetzen oder einen anderen Benutzer auswählen?", choices=["fortsetzen", "wechseln"], default="fortsetzen")
-            if choice == "fortsetzen":
+            # Geänderte Logik für die Auswahl: 1, 2, 0 statt Text
+            choice = IntPromptDeutsch.ask("Möchten Sie die Verbindung mit diesem Benutzer fortsetzen (1), einen anderen Benutzer auswählen (2), oder abbrechen (0)?", choices=["1", "2", "0"], default="1")
+            
+            if choice == 1: # Fortsetzen
                 return
-            else:
+            elif choice == 2: # Wechseln
                 self.conn = None
                 self.current_user_profile = None
                 self.onlineDocumentsDict = {}
+                # Fällt durch, um die Benutzerauswahl anzuzeigen
+            elif choice == 0: # Abbrechen
+                print("[yellow]Aktion abgebrochen.[/yellow]")
+                self.conn = None
+                self.current_user_profile = None
+                self.onlineDocumentsDict = {}
+                return # Beende die Funktion hier
 
         if 'console' in globals() and isinstance(console, Console):
             console.clear()
@@ -244,16 +253,33 @@ class Main:
         user_table = Table(width=int(ui_width / 2))
         user_table.add_column("Nr.", style="blue b", width=5)
         user_table.add_column("Benutzername", style="cyan", ratio=999)
+        
         for i, profile_name in enumerate(user_profiles):
             profile_settings = self.settings.getProfileSettings(profile_name)
-            user_table.add_row(str(i + 1), profile_settings.get("user", profile_name))
+            
+            # Neue Logik: Priorisiere den Profilnamen (ohne "USER_") für die Anzeige
+            display_name = profile_name.replace("USER_", "")
+            
+            user_table.add_row(str(i + 1), display_name)
+        
+        user_table.add_row("0", "Abbrechen", style="red") # Abbrechen-Option hinzufügen
+        
         print(user_table)
 
-        selected_index = IntPromptDeutsch.ask("Bitte wählen Sie ein Benutzerprofil aus", choices=[str(i + 1) for i in range(len(user_profiles))])
-        selected_profile_name = user_profiles[selected_index - 1]
+        # Passe die möglichen Auswahlmöglichkeiten an, um "0" für Abbrechen zu inkludieren
+        valid_choices = [str(i + 1) for i in range(len(user_profiles))] + ["0"]
+        selected_index_str = IntPromptDeutsch.ask("Bitte wählen Sie ein Benutzerprofil aus oder 0 zum Abbrechen", choices=valid_choices)
+        
+        if selected_index_str == 0: # Wenn 0 ausgewählt wird, abbrechen
+            print("[yellow]Benutzerauswahl abgebrochen.[/yellow]")
+            self.conn = None # Stelle sicher, dass keine Verbindung besteht
+            self.current_user_profile = None
+            return
+
+        selected_profile_name = user_profiles[int(selected_index_str) - 1]
         self.current_user_profile = self.settings.getProfileSettings(selected_profile_name)
 
-        print(f"[yellow]Verbinde mit Benutzer:[/yellow] {self.current_user_profile['user']}")
+        print(f"[yellow]Verbinde mit Benutzer:[/yellow] {self.current_user_profile['user'] if 'user' in self.current_user_profile else 'Unbekannt'}")
 
         self.__startConnection()
 
@@ -676,11 +702,11 @@ class Main:
                     downloadSource = self.settings.getValueForKey("downloadSource")
                     if (downloadSource == DownloadSource.archivedOnly.value and not document.documentMetadata.archived) or \
                        (downloadSource == DownloadSource.notArchivedOnly.value and document.documentMetadata.archived):
-                        __printStatus(idx, document, "SKIPPED - nicht in gewählter Download-Quelle")
+                        __printStatus(idx, document, "SKIPPED - not in selected download source")
                         countSkipped += 1
                         continue
                     if self.settings.getBoolValueForKey("downloadOnlyFilenames") and firstFilename not in downloadFilenameList:
-                        __printStatus(idx, document, "SKIPPED - Dateiname nicht in der Filterliste")
+                        __printStatus(idx, document, "SKIPPED - filename not in filename list")
                         countSkipped += 1
                         continue
                 
@@ -694,7 +720,7 @@ class Main:
                     file_extension = ".html"
                 else:
                     if not isCountRun:
-                        __printStatus(idx, document, f"ÜBERSPRUNGEN - Unbekannter MIME-Typ {document.mimeType}")
+                        __printStatus(idx, document, f"Unknown mimeType {document.mimeType}")
                         countSkipped += 1
                     continue
 

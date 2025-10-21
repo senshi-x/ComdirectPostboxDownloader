@@ -4,7 +4,6 @@ import json
 from ComdirectConnection import Connection, Document, XOnceAuthenticationInfo
 from settings import Settings
 from pathvalidate._filename import sanitize_filename
-from typing import Any
 from enum import Enum
 from rich.console import Console
 from rich.table import Table
@@ -26,7 +25,7 @@ class IntPromptDeutsch(IntPrompt):
     illegal_choice_message = "[prompt.invalid.choice]Bitte eine der gültigen Optionen auswählen"
 
 
-def print(string: Any, highlight : bool| None= None):
+def print(string: object, highlight : bool | None = None):
     console.print(string, highlight=highlight)
 
 
@@ -169,7 +168,15 @@ class Main:
             elif r.status_code == 400 and rjson["code"] == "TAN_UNGUELTIG":
                 print(rjson["messages"][0]["message"])
             elif r.status_code != 200:
-                print(f"HTTP Status: {r.status_code} | {r.json()}")
+                try:
+                    j = r.json()
+                    msg = j.get("message") if isinstance(j, dict) else None
+                except Exception:
+                    msg = None
+                if msg:
+                    print(f"HTTP Status: {r.status_code} | {msg}")
+                else:
+                    print(f"HTTP Status: {r.status_code}")
                 if attempts > 2:
                     print("---")
                     print(
@@ -244,11 +251,11 @@ class Main:
             # fill idx to 5 chars
             if isCountRun:
                 return
-            printLeftString = f"{str(idx):>5} | [cyan]{document.dateCreation.strftime('%Y-%m-%d')}[/cyan] | {sanitize_filename(document.name)}"
+            printLeftString = f"{str(idx):>5} | [cyan]{document.dateCreation.strftime("%Y-%m-%d")}[/cyan] | {sanitize_filename(document.name)}"
             printRightString = status
             filler: str = " "
             spaces = ui_width - len(printLeftString) - len(printRightString)
-            if console is Console:
+            if isinstance(console, Console):
                 progress.console.print(printLeftString + (spaces * filler) + printRightString, highlight=False)
             else:
                 print(printLeftString + (spaces * filler) + printRightString, highlight=False)
@@ -343,7 +350,7 @@ class Main:
                             # print(filepath)
                             # print(f"{os.path.getmtime(filepath)} {datetime.fromtimestamp(os.path.getmtime(filepath)).strftime("%Y-%m-%d")}")
                             path, suffix = filepath.rsplit(".",1)
-                            filepath = f"{path}_{document.dateCreation.strftime('%Y-%m-%d')}.{suffix}"
+                            filepath = f"{path}_{document.dateCreation.strftime("%Y-%m-%d")}.{suffix}"
                             # print("New filepath" + filepath)
                             if os.path.exists(filepath): # If there's multiple per same day, we append a counter
                                 docContent = self.conn.downloadDocument(document) # Gotta load early to check if content is same

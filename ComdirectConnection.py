@@ -1,4 +1,3 @@
-from typing import Any
 import requests
 import json
 import secrets
@@ -16,7 +15,7 @@ class XOnceAuthenticationInfo:
     def __init__(self, data: dict[str, str]):
         self.id = data["id"]
         self.typ = data["typ"]
-        if hasattr(data, "challenge"):
+        if "challenge" in data:
             self.challenge = data["challenge"]
         self.availableTypes = []
         for x in data["availableTypes"]:
@@ -29,7 +28,7 @@ class DocumentMeta:
     alreadyRead: bool
     predocumentExists: bool
 
-    def __init__(self, data: dict[str, Any]):
+    def __init__(self, data: dict[str, object]):
         # print(json.dumps(data, indent=4))
         self.archived = data["archived"]
         if "dateRead" in data:
@@ -47,7 +46,7 @@ class Document:
     advertisement: bool
     documentMetadata: DocumentMeta
 
-    def __init__(self, data: dict[str, Any]):
+    def __init__(self, data: dict[str, object]):
         self.documentId = data["documentId"]
         self.name = data["name"]
         self.dateCreation = datetime.strptime(data["dateCreation"], "%Y-%m-%d")
@@ -66,7 +65,7 @@ class DocumentList:
     allowedToSeeAllDocuments: bool
     documents: list[Document]
 
-    def __init__(self, data: dict[str, Any]):
+    def __init__(self, data: dict[str, object]):
         self.index = data["paging"]["index"]
         self.matches = data["paging"]["matches"]
         self.unreadMessages = data["aggregated"]["unreadMessages"]

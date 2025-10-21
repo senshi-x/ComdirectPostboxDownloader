@@ -2,7 +2,7 @@
 
 Lädt alle PDF-Dokumente aus einer beliebigen Zeitspanne herunter.
 
-Benötigt wird mindestens **Python 3.8**
+Benötigt wird mindestens **Python 3.10**
 
 Das Tool muss mittels Kommandozeile gestartet und bedient werden.
 Es ist zwingend erforderlich, die `settings.ini` anzulegen.
@@ -48,7 +48,7 @@ Wichtig: "\\" als Pfad-Trenner muss immer doppelt angegeben werden wie in obigem
 
 
 ## Verwendet:
-- Python 3.8+
+- Python 3.10+
 - Python-Bibliotheken:
   - pathvalidate (für Validierung der Ausgabedateinamen)
   - pillow (für PhotoTAN-Verfahren)

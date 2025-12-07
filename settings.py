@@ -29,7 +29,7 @@ class Settings:
                     self.__config["DEFAULT"]["clientId"] = self.__getInputForString("Bitte geben Sie die oAuth clientId für den API-Zugang ein: ")
 
                 if not self.__isSettingNameFilledInConfig("clientSecret"):
-                    self.__config["DEFAULT"]["clientSecret"] = self.__getInputForString("Bitte geben Sie Ihr oAuth clientSecret für den API Zugang ein: ")
+                    self.__config["DEFAULT"]["clientSecret"] = getpass.getpass(prompt="Bitte geben Sie Ihr oAuth clientSecret für den API Zugang ein: ", stream=None)
 
                 if not self.__isSettingNameFilledInConfig("outputDir"):
                     self.__config["DEFAULT"]["outputDir"] = self.__getInputForString("Bitte geben Sie das Zielverzeichnis an, in welches die Dokumente heruntergeladen werden sollen: ")

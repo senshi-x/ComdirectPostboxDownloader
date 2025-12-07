@@ -354,6 +354,10 @@ class Main:
                             # print("New filepath" + filepath)
                             if os.path.exists(filepath): # If there's multiple per same day, we append a counter
                                 docContent = self.conn.downloadDocument(document) # Gotta load early to check if content is same
+                                if docContent is None:
+                                    __printStatus(idx, document, "FEHLER - Download fehlgeschlagen (siehe oben)")
+                                    countSkipped += 1
+                                    continue
                                 if __isFileEqual(filepath, docContent):
                                     __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits heruntergeladen")
                                     countSkipped += 1
@@ -383,6 +387,10 @@ class Main:
                         continue
                 if not docContent: # Ensure data is loaded
                     docContent = self.conn.downloadDocument(document)
+                if docContent is None:
+                    __printStatus(idx, document, "FEHLER - Download fehlgeschlagen (siehe oben)")
+                    countSkipped += 1
+                    continue
                 with open(filepath, "wb") as f:
                     f.write(docContent)
                     # shutil.copyfileobj(docContent, f)

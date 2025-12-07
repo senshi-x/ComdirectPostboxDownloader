@@ -299,5 +299,10 @@ class Connection:
                 ),
             },
         )
-        r.raise_for_status()
-        return r.content
+        try:
+            r.raise_for_status()
+            return r.content
+        except requests.exceptions.HTTPError as e:
+            # Return None on HTTP errors (including 500) to allow the process to continue
+            print(f"HTTP Error {r.status_code} for document {document.documentId}: {str(e)}")
+            return None

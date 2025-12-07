@@ -251,7 +251,7 @@ class Main:
             # fill idx to 5 chars
             if isCountRun:
                 return
-            printLeftString = f"{str(idx):>5} | [cyan]{document.dateCreation.strftime("%Y-%m-%d")}[/cyan] | {sanitize_filename(document.name)}"
+            printLeftString = f"{str(idx):>5} | [cyan]{document.dateCreation.strftime('%Y-%m-%d')}[/cyan] | {sanitize_filename(document.name)}"
             printRightString = status
             filler: str = " "
             spaces = ui_width - len(printLeftString) - len(printRightString)
@@ -350,7 +350,7 @@ class Main:
                             # print(filepath)
                             # print(f"{os.path.getmtime(filepath)} {datetime.fromtimestamp(os.path.getmtime(filepath)).strftime("%Y-%m-%d")}")
                             path, suffix = filepath.rsplit(".",1)
-                            filepath = f"{path}_{document.dateCreation.strftime("%Y-%m-%d")}.{suffix}"
+                            filepath = f"{path}_{document.dateCreation.strftime('%Y-%m-%d')}.{suffix}"
                             # print("New filepath" + filepath)
                             if os.path.exists(filepath): # If there's multiple per same day, we append a counter
                                 docContent = self.conn.downloadDocument(document) # Gotta load early to check if content is same

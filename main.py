@@ -352,34 +352,27 @@ class Main:
                             path, suffix = filepath.rsplit(".",1)
                             filepath = f"{path}_{document.dateCreation.strftime('%Y-%m-%d')}.{suffix}"
                             # print("New filepath" + filepath)
-                            if os.path.exists(filepath): # If there's multiple per same day, we append a counter
-                                docContent = self.conn.downloadDocument(document) # Gotta load early to check if content is same
-                                if docContent is None:
-                                    __printStatus(idx, document, "FEHLER - Download fehlgeschlagen (siehe oben)")
-                                    countSkipped += 1
-                                    continue
-                                if __isFileEqual(filepath, docContent):
-                                    __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits heruntergeladen")
-                                    countSkipped += 1
-                                    self.onlineAlreadyDownloadedIndicesList.append(idx)
-                                    continue
-                                path, suffix = filepath.rsplit(".",1)
-                                if path[-3] == "-" and path[-1].isdigit(): # We assume this is the day split YYYY-mm-dd, so no duplicate existed yet
-                                    path += "_1"
-                                else:
-                                    counter = int(path[-1]) + 1 # We increase the counter by 1
-                                    path = path[:-1] + str(counter)
-                                filepath = f"{path}.{suffix}"
-                                # print("New filepath" + filepath)
-                                if os.path.exists(filepath): # Enough is enough...
-                                    __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits heruntergeladen")
-                                    self.onlineNotYetDownloadedIndicesList.append(idx)
-                                    continue
-                        elif not overwrite:
-                            __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits heruntergeladen")
-                            countSkipped += 1
-                            self.onlineAlreadyDownloadedIndicesList.append(idx)
-                            continue
+                        if os.path.exists(filepath): # If there's multiple per same day, we append a counter
+                            docContent = self.conn.downloadDocument(document) # Gotta load early to check if content is same
+                            if docContent is None:
+                                __printStatus(idx, document, "FEHLER - Download fehlgeschlagen (siehe oben)")
+                                countSkipped += 1
+                                continue
+                            if __isFileEqual(filepath, docContent):
+                                __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits heruntergeladen")
+                                countSkipped += 1
+                                self.onlineAlreadyDownloadedIndicesList.append(idx)
+                                continue
+                            path, suffix = filepath.rsplit(".",1)
+                            counter = 1
+                            while(os.path.exists(filepath)):
+                                filepath = f"{path}_{counter}.{suffix}"
+                                counter += 1 # We increase the counter by 1
+                            # print("New filepath" + filepath)
+                            if os.path.exists(filepath): # Enough is enough...
+                                __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits heruntergeladen")
+                                self.onlineNotYetDownloadedIndicesList.append(idx)
+                                continue
                     elif not overwrite:
                         __printStatus(idx, document, "ÜBERSPRUNGEN - appendIfNameExists ist FALSE")
                         countSkipped += 1

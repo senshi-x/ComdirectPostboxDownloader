@@ -42,6 +42,7 @@ class Main:
     onlineArchivedIndicesList: list[int] = []
     onlineUnreadIndicesList: list[int] = []
     onlineFileNameMatchingIndicesList: list[int] = []
+    onlineSelectedIndicesList: list[int] = []
     onlineNotYetDownloadedIndicesList: list[int] = []
     onlineAlreadyDownloadedIndicesList: list[int] = []
 
@@ -115,6 +116,7 @@ class Main:
                 # start download of files
                 self.__startConnection()
                 self.__loadDocuments()
+                self.__resetOnlineStatusLists()
                 self.__processOnlineDocuments()
             elif val == 0:
                 loop = False
@@ -213,12 +215,7 @@ class Main:
             x += batchSize
 
     def __showStatusOnlineDocuments(self):
-        self.onlineAdvertismentIndicesList = []
-        self.onlineArchivedIndicesList = []
-        self.onlineFileNameMatchingIndicesList = []
-        self.onlineNotYetDownloadedIndicesList = []
-        self.onlineAlreadyDownloadedIndicesList = []
-        self.onlineUnreadIndicesList = []
+        self.__resetOnlineStatusLists()
 
         if not self.onlineDocumentsDict:
             return
@@ -234,6 +231,7 @@ class Main:
         table.add_column("Anzahl", style="blue b", width = 10, justify="right")
         table.add_row("Online-Dokumente gesamt", str(self.countOnlineAll))
         table.add_section()
+        table.add_row("Durch Filter ausgewählt", str(len(self.onlineSelectedIndicesList)))
         table.add_row("Davon ungelesen", str(len(self.onlineUnreadIndicesList)))
         table.add_row("Davon bereits heruntergeladen", str(len(self.onlineAlreadyDownloadedIndicesList)), style="dim")
         table.add_row("Davon noch nicht heruntergeladen", str(len(self.onlineNotYetDownloadedIndicesList)), style="dim")
@@ -242,6 +240,94 @@ class Main:
         if self.settings.getBoolValueForKey("downloadOnlyFilenames"):
             table.add_row("Davon in der Liste gewünschter Dateinamen", str(len(self.onlineFileNameMatchingIndicesList)), style="dim")
         print(table)
+
+    def __resetOnlineStatusLists(self):
+        self.onlineAdvertismentIndicesList = []
+        self.onlineArchivedIndicesList = []
+        self.onlineFileNameMatchingIndicesList = []
+        self.onlineSelectedIndicesList = []
+        self.onlineNotYetDownloadedIndicesList = []
+        self.onlineAlreadyDownloadedIndicesList = []
+        self.onlineUnreadIndicesList = []
+
+    def __get_document_type(self, document: Document) -> str:
+        return document.name.split(" ", 1)[0]
+
+    def __get_document_subfolder(self, document: Document) -> str:
+        if document.mimeType == "application/pdf":
+            return "pdf"
+        if document.mimeType == "text/html":
+            return "html"
+        return ""
+
+    def __get_document_filename(self, document: Document) -> str:
+        filename = document.name
+        if document.mimeType == "application/pdf":
+            filename += ".pdf"
+        elif document.mimeType == "text/html":
+            filename += ".html"
+        return sanitize_filename(filename)
+
+    def __build_filepath(self, document: Document, useThematicSubFolders: bool, useSubFolders: bool) -> str:
+        path_parts = [self.settings.getOutputDir()]
+        if useThematicSubFolders:
+            path_parts.append(sanitize_filename(self.__get_document_type(document)))
+        if useSubFolders:
+            subFolder = self.__get_document_subfolder(document)
+            if subFolder:
+                path_parts.append(sanitize_filename(subFolder))
+        path_parts.append(self.__get_document_filename(document))
+        return os.path.join(*path_parts)
+
+    def __get_target_filepath(self, document: Document) -> str:
+        return self.__build_filepath(
+            document,
+            self.settings.getBoolValueForKey("useThematicSubFolders"),
+            self.settings.getBoolValueForKey("useSubFolders"),
+        )
+
+    def __get_date_appended_filepath(self, filepath: str, document: Document) -> str:
+        if "." not in filepath:
+            return filepath
+        path, suffix = filepath.rsplit(".", 1)
+        return f"{path}_{document.dateCreation.strftime('%Y-%m-%d')}.{suffix}"
+
+    def __get_candidate_filepaths(self, document: Document) -> list[str]:
+        target_filepath = self.__get_target_filepath(document)
+        candidates = [
+            target_filepath,
+            self.__get_date_appended_filepath(target_filepath, document),
+            self.__build_filepath(document, True, True),
+            self.__build_filepath(document, True, False),
+            self.__build_filepath(document, False, True),
+            self.__build_filepath(document, False, False),
+        ]
+        unique_candidates = []
+        seen = set()
+        for filepath in candidates:
+            normalized_filepath = os.path.normcase(os.path.abspath(filepath))
+            if normalized_filepath not in seen:
+                unique_candidates.append(filepath)
+                seen.add(normalized_filepath)
+        return unique_candidates
+
+    def __has_document_timestamp(self, filepath: str, document: Document) -> bool:
+        try:
+            return abs(os.path.getmtime(filepath) - document.dateCreation.timestamp()) < 2
+        except OSError:
+            return False
+
+    def __is_document_available_locally(self, document: Document) -> bool:
+        target_filepath = os.path.normcase(os.path.abspath(self.__get_target_filepath(document)))
+        for filepath in self.__get_candidate_filepaths(document):
+            if not os.path.exists(filepath):
+                continue
+            isTargetFilepath = os.path.normcase(os.path.abspath(filepath)) == target_filepath
+            if isTargetFilepath and not self.settings.getBoolValueForKey("appendIfNameExists"):
+                return True
+            if self.__has_document_timestamp(filepath, document):
+                return True
+        return False
 
     def __processOnlineDocuments(self, isCountRun: bool = False):
         if not self.onlineDocumentsDict:
@@ -274,10 +360,9 @@ class Main:
         )
         with progress:
             overwrite = False  # Only download new files
-            useSubFolders = self.settings.getBoolValueForKey("useSubFolders")
-            outputDir = self.settings.getValueForKey("outputDir")
-            downloadFilenameList = self.settings.getValueForKey("downloadOnlyFilenamesArray")
+            downloadFilenameList = self.settings.getDownloadOnlyFilenames()
             downloadSource = self.settings.getValueForKey("downloadSource")
+            incrementalSync = self.settings.getBoolValueForKey("incrementalSync")
 
             countAll = len(self.onlineDocumentsDict)
             countProcessed = 0
@@ -289,9 +374,7 @@ class Main:
             for idx in self.onlineDocumentsDict:
                 progress.advance(task)
                 document = self.onlineDocumentsDict[idx]
-                firstFilename = document.name.split(" ", 1)[0]
-                subFolder = ""
-                myOutputDir = outputDir
+                firstFilename = self.__get_document_type(document)
                 countProcessed += 1
 
                 # counting
@@ -301,6 +384,8 @@ class Main:
                     self.onlineArchivedIndicesList.append(idx)
                 if firstFilename in downloadFilenameList:
                     self.onlineFileNameMatchingIndicesList.append(idx)
+                # comdirect may mark a document as read when it is downloaded.
+                # alreadyRead is display-only here and never used for local sync decisions.
                 if not document.documentMetadata.alreadyRead:
                     self.onlineUnreadIndicesList.append(idx)
 
@@ -315,22 +400,23 @@ class Main:
                     __printStatus(idx, document, "SKIPPED - filename not in filename list")
                     countSkipped += 1
                     continue
-                filename = document.name
-                if document.mimeType == "application/pdf":
-                    subFolder = "pdf"
-                    filename += ".pdf"
-                elif document.mimeType == "text/html":
-                    subFolder = "html"
-                    filename += ".html"
-                else:
+
+                self.onlineSelectedIndicesList.append(idx)
+
+                if not self.__get_document_subfolder(document):
                     __printStatus(idx, document, f"Unknown mimeType {document.mimeType}")
 
-                if useSubFolders:
-                    myOutputDir : str = os.path.join(outputDir, sanitize_filename(subFolder))
-                    if not os.path.exists(myOutputDir):
-                        os.makedirs(myOutputDir)
+                filepath = self.__get_target_filepath(document)
+                documentExistsLocally = self.__is_document_available_locally(document)
+                if documentExistsLocally:
+                    self.onlineAlreadyDownloadedIndicesList.append(idx)
+                else:
+                    self.onlineNotYetDownloadedIndicesList.append(idx)
 
-                filepath = os.path.join(myOutputDir, sanitize_filename(filename))
+                if incrementalSync and documentExistsLocally:
+                    __printStatus(idx, document, "ÜBERSPRUNGEN - Datei bereits lokal vorhanden")
+                    countSkipped += 1
+                    continue
 
                 # do the download
                 if bool(self.settings.getBoolValueForKey("dryRun")) or isCountRun:
@@ -340,6 +426,9 @@ class Main:
 
                 docDate = document.dateCreation.timestamp()
                 docContent = None
+                targetDir = os.path.dirname(filepath)
+                if not os.path.exists(targetDir):
+                    os.makedirs(targetDir)
 
                 # check if already downloaded
                 if os.path.exists(filepath):
@@ -384,6 +473,8 @@ class Main:
                     __printStatus(idx, document, "FEHLER - Download fehlgeschlagen (siehe oben)")
                     countSkipped += 1
                     continue
+                # The API download can change alreadyRead server-side; local sync
+                # is based on file path/existence and document date instead.
                 with open(filepath, "wb") as f:
                     f.write(docContent)
                     # shutil.copyfileobj(docContent, f)
@@ -404,5 +495,6 @@ class Main:
                 print(table)
 
 
-dirname = os.path.dirname(__file__)
-main = Main(dirname)
+if __name__ == "__main__":
+    dirname = os.path.dirname(__file__)
+    main = Main(dirname)

@@ -1,3 +1,10 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+.Python
+.venv/
+venv/
 .DS_Store
 settings.ini
-**/

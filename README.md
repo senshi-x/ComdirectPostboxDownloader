@@ -1,56 +1,102 @@
 # Comdirect Postbox Downloader
 
-Lädt alle PDF-Dokumente aus einer beliebigen Zeitspanne herunter.
+Lädt Dokumente aus der comdirect-Postbox herunter.
 
-Benötigt wird mindestens **Python 3.10**
+Benötigt wird mindestens **Python 3.10**. Das Tool wird per Kommandozeile gestartet und bedient. Es ist weiterhin erforderlich, eine `settings.ini` aus `settings.ini.example` anzulegen.
 
-Das Tool muss mittels Kommandozeile gestartet und bedient werden.
-Es ist zwingend erforderlich, die `settings.ini` anzulegen.
-Es werden sowohl das Photo-PushTAN- als auch Mobile-TAN-Verfahren unterstützt.
-Das klassische PhotoTAN-Verfahren ist implementiert, aber noch nicht getestet.
+Es werden sowohl das Photo-PushTAN- als auch Mobile-TAN-Verfahren unterstützt. Das klassische PhotoTAN-Verfahren ist implementiert, aber noch nicht getestet.
 
 # Setup
+
 Im Verzeichnis einmalig ausführen:
-> pip install -Ur requirements.txt
 
-oder
-> python -m pip install -Ur requirements.txt
+```powershell
+python -m pip install -Ur requirements.txt
+```
 
-Die `settings.ini` konfigurieren und bereitstellen (siehe Kapitel unten).
+Danach `settings.ini` konfigurieren und `main.py` starten:
 
-Anschließend die **main.py** starten, z.B. mit
-> python main.py
+```powershell
+python main.py
+```
 
+## Zugangsdaten und Secrets
+
+`user` und `clientId` dürfen in `settings.ini` stehen. `pwd` und `clientSecret` sollten dort nicht dauerhaft gespeichert werden.
+
+Wenn `pwd` oder `clientSecret` in `settings.ini` fehlen, liest das Tool sie aus dem konfigurierten Secret-Backend. Fehlen sie auch dort, werden sie beim Start per Passwortabfrage abgefragt, gespeichert und im aktuellen Programmlauf verwendet.
+
+- **Windows**: Bei `secretBackend=auto` werden Secrets via `keyring` im Windows Credential Manager gespeichert.
+- **Linux / Raspberry Pi**: Bei `secretBackend=auto` werden Secrets in einer lokalen `.env` im Projektverzeichnis gespeichert.
+- **secretBackend**: `auto`, `keyring` oder `env`.
+- **secretNamespace**: Service- oder Namensraum für das Secret-Backend, z. B. `Banking/comdirect`.
+
+`settings.ini` und `.env` enthalten lokale Daten und dürfen nicht committet werden.
 
 ## Settings
-Hier gibt es mehrere Werte zu setzen. Die folgenden sind optional. Sind diese nicht gesetzt, werden sie jedes Mal bei der Ausführung abgefragt. Jeder Wert kann einzeln gesetzt oder freigelassen werden. Das Speichern aller Zugangsdaten im Klartext kann ein Sicherheitsrisiko bedeuten, hier also mit Vernunft herangehen. Als Minimum empfiehlt es sich, zumindest das Passwort hier NICHT zu hinterlegen.
-- **user** = Deine Zugangsnummer
-- **pwd** = Deine PIN/Passwort
-- **clientId** = ClientID, die via API Access erhaltbar ist (https://kunde.comdirect.de/itx/oauth/privatkunden)
-- **clientSecret** = ClientSecret, welches ebenfalls in vorigem Link verfügbar ist
 
-Die folgenden Einstellungen erlauben es, das Verhalten des Downloads zu konfigurieren:
-- **outputDir** = Ausgabeverzeichnis, in das die heruntergeladenen Dateien gespeichert werden sollen.
-- **dryRun** = Leerlauf, das Herunterladen wird nur simuliert
-- **useSubFolders** = Legt die Dateien je nach Dateiname in Unterordner ab (alle Finanzreporte unter Finanzreporte, etc.)
-- **downloadOnlyFilenames** = Lädt nur Dateien herunter, deren Dateiname mit einem der hier angegeben Wörter beginnt. Bei False wird alles heruntergeladen.
-- **downloadOnlyFilenamesArray** = Liste der gewünschten Dateinamen
-- **downloadSource** = Auswahl der Datenherkunft.
+Siehe `settings.ini.example` als Beispieldatei. Wichtige Optionen:
 
+- **outputDir**: Zielverzeichnis für heruntergeladene Dokumente.
+- **dryRun**: Bei `True` wird nichts heruntergeladen.
+- **appendIfNameExists**: Bei Namenskollisionen wird zuerst das Dokumentdatum an den Dateinamen angehängt.
+- **useSubFolders**: Bestehende technische Sortierung nach MIME-Typ, z. B. `pdf` oder `html`.
+- **useThematicSubFolders**: Thematische Sortierung nach comdirect-Dokumenttyp.
+- **incrementalSync**: Erkennt lokal vorhandene Dokumente und überspringt sie beim Download.
+- **downloadOnlyFilenames**: Lädt nur Dokumente herunter, deren Dokumenttyp in `downloadOnlyFilenamesArray` enthalten ist.
+- **downloadOnlyFilenamesArray**: Liste der comdirect-Dokumenttypen. Unterstützt werden das bisherige Set-Format und CSV.
+- **downloadSource**: `archivedOnly`, `notArchivedOnly` oder `all`.
 
-Siehe **settings.ini.example** als Beispieldatei.
+`useSubFolders` und `useThematicSubFolders` sind unabhängig:
 
-### Outputdir
-Es können relative Pfade angegeben werden. Diese werden ausgehend vom Skriptverzeichnis aufgelöst. Z.b. Dokumente als Unterverzeichnis.
-Wird ein absoluter Pfad angegeben (z.b. *C:\\\\Benutzer\\\\Annonymus\\\\Dokumente\\\\Bank\\\\Comdirect\\\\PDFs* ), so wird dieser auch korrekt verwendet.
+- `useSubFolders=True` sortiert technisch nach MIME-Typ: `pdf` / `html`.
+- `useThematicSubFolders=True` sortiert thematisch nach comdirect-Dokumenttyp.
+- Wenn beide aktiv sind, wird zuerst der Dokumenttyp-Ordner und darunter optional `pdf` / `html` verwendet.
 
-Wichtig: "\\" als Pfad-Trenner muss immer doppelt angegeben werden wie in obigem Beispiel!
+Die thematischen Ordnernamen werden nicht pluralisiert. Sie entsprechen exakt den Dokumenttypen, z. B.:
 
+```ini
+outputDir=U:\\MyMoney\\Banking\\comdirect\\
+```
 
-## Verwendet:
+Beispielausgabe bei `useThematicSubFolders=True`:
+
+```text
+U:\MyMoney\Banking\comdirect\Finanzreport\
+U:\MyMoney\Banking\comdirect\Jahressteuerbescheinigung\
+U:\MyMoney\Banking\comdirect\Wertpapierabrechnung\
+U:\MyMoney\Banking\comdirect\Steuermitteilung\
+U:\MyMoney\Banking\comdirect\Gutschrift\
+U:\MyMoney\Banking\comdirect\Dividendengutschrift\
+U:\MyMoney\Banking\comdirect\Ertragsgutschrift\
+U:\MyMoney\Banking\comdirect\Kosteninformation\
+```
+
+Bei `useThematicSubFolders=True` und `useSubFolders=True` landet ein PDF-Finanzreport z. B. unter:
+
+```text
+U:\MyMoney\Banking\comdirect\Finanzreport\pdf\
+```
+
+## Inkrementeller Sync
+
+Bei `incrementalSync=True` prüft das Tool vor dem Download, ob ein Dokument bereits lokal vorhanden ist. Dafür wird dieselbe Zielpfad-Logik verwendet wie beim Download. Zusätzlich werden ältere Ablagevarianten ohne thematischen Ordner sowie mit und ohne `pdf`-/`html`-Unterordner geprüft.
+
+Menüpunkt 3 zeigt dadurch an, wie viele Online-Dokumente durch die Filter ausgewählt, bereits lokal vorhanden oder noch fehlend sind. Menüpunkt 4 lädt nur fehlende Dokumente herunter.
+
+Der Download über die comdirect API kann serverseitig den Status `alreadyRead` verändern, weil comdirect den Abruf offenbar wie ein Öffnen oder Lesen des Dokuments behandelt. `alreadyRead` ist deshalb kein zuverlässiger Indikator dafür, ob ein Dokument bereits lokal gesichert wurde. Für den lokalen Sync werden weiterhin Dateiexistenz, Zielpfad und Dokumentdatum verwendet.
+
+Eine automatische Archivierung ist nicht implementiert. Solange kein dokumentierter comdirect-Endpunkt dafür bekannt ist, markiert das Tool heruntergeladene Dokumente nicht automatisch als archiviert.
+
+## Transparenz
+
+Dieses Fork wurde bei den Erweiterungen für Secret-Handling, thematische Unterordner und inkrementellen Sync mit Unterstützung von OpenAI Codex bearbeitet. Die Änderungen wurden dabei gezielt klein gehalten und an der bestehenden Projektstruktur ausgerichtet.
+
+## Verwendet
+
 - Python 3.10+
-- Python-Bibliotheken:
-  - pathvalidate (für Validierung der Ausgabedateinamen)
-  - pillow (für PhotoTAN-Verfahren)
-  - requests (für REST-Anfragen)
-  - rich (für hübsches Terminal-UI)
+- pathvalidate
+- pillow
+- requests
+- rich
+- keyring
